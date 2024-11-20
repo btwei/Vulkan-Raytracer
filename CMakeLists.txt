@@ -8,7 +8,7 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(vulkanRaytracer src/main.cpp)
+add_executable(vulkanRaytracer src/main.cpp src/VulkanWrapper.cpp src/Window.cpp)
 target_include_directories(vulkanRaytracer PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 target_link_libraries(vulkanRaytracer glfw vulkan)
