@@ -2,16 +2,22 @@
 #include "VulkanWrapper.h"
 
 int main() {
+    try {
+        Window window;
+        window.init();
 
-    Window window;
-    window.init();
+        VulkanWrapper vulkanWrapper;
+        vulkanWrapper.init(window.getWindow());
 
-    VulkanWrapper vulkanWrapper;
-    vulkanWrapper.init(window.getWindow());
+        while(!window.shouldClose()){
+            window.pollEvents();
+        }
 
-    while(!window.shouldClose()){
-        window.pollEvents();
+        vulkanWrapper.cleanup();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
