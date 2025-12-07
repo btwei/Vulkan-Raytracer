@@ -5,19 +5,9 @@ App::App(int argc, char* argv[]) :
     _argv(argv){ }
 
 void App::run() {
-    init();
-    mainLoop();
-    cleanup();
-}
+    _engine.init("Vulkan Raytracer", 800, 600);
 
-void App::init() {
-    
-}
+    // TODO: Add application logic here-- cameras, object loading, etc.
 
-void App::mainLoop() {
-
-}
-
-void App::cleanup() {
-
+    _engine.run();
 }

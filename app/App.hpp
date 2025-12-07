@@ -5,7 +5,7 @@
 
 /**
  * @class App
- * @brief This is the top level class for my raytracer
+ * @brief This is the top level class for my raytracing app
  */
 class App {
 public:
@@ -15,9 +15,7 @@ private:
     int _argc;
     char** _argv;
 
-    void init();
-    void mainLoop();
-    void cleanup();
+    vkrt::Engine _engine;
 };
 
 #endif
