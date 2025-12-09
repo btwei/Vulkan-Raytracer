@@ -18,6 +18,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/*.
 target_sources(engine PUBLIC ${ENGINE_SOURCES})
 
 # NOTE: In the future, I'd consider splitting the engine/ folder into include/ and src/
-target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/include)
+target_include_directories(engine 
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/include 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap/src)
 
 target_link_libraries(engine PRIVATE SDL3::SDL3 vk-bootstrap::vk-bootstrap)
