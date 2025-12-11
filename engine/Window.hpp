@@ -34,8 +34,8 @@ public:
     SDL_Window* getWindow() const { return _window; };
     int getWidth() const { return _width; };
     int getHeight() const { return _height; };
-    int getFramebufferWidth() const { _framebufferWidth; };
-    int getFramebufferHeight() const { _framebufferHeight; };
+    int getFramebufferWidth() const { return _framebufferWidth; };
+    int getFramebufferHeight() const { return _framebufferHeight; };
 
 private:
     static int _instanceCount;
