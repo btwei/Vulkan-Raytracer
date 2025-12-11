@@ -40,6 +40,13 @@ void Window::close() {
     _window = nullptr;
 }
 
+VkSurfaceKHR Window::createSurface(VkInstance instance) {
+    VkSurfaceKHR surface;
+    bool result = SDL_Vulkan_CreateSurface(_window, instance, nullptr, &surface);
+    if(!result) throw std::runtime_error("Failed to create Vulkan surface!");
+    return surface;
+}
+
 bool Window::handleEvents() {
     SDL_Event e;
     while(SDL_PollEvent(&e)) {

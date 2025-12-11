@@ -1,6 +1,9 @@
 #ifndef VKRT_RENDERER_HPP
 #define VKRT_RENDERER_HPP
 
+#include <VkBootstrap.h>
+#include <vulkan/vulkan.h>
+
 #include "Window.hpp"
 
 namespace vkrt {
@@ -11,10 +14,24 @@ public:
     ~Renderer();
 
     void init();
-    void drawFrame();
+    void submitFrame();
+    void cleanup();
     
 private:
+    bool _isInitialized = false;
 
+    Window* _window = nullptr;
+
+    VkInstance _instance;
+    VkDebugUtilsMessengerEXT _debugMessenger;
+    VkSurfaceKHR _surface;
+    VkPhysicalDevice _physicalDevice;
+    VkDevice _device;
+
+    VkQueue _graphicsQueue;
+    uint32_t _graphicsQueueFamilyIndex;
+
+    void initVulkanBootstrap();
 };
 
 } // namespace vkrt

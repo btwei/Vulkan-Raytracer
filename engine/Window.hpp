@@ -26,6 +26,8 @@ public:
     void open(const std::string& windowName, int width, int height);
     void close();
 
+    VkSurfaceKHR createSurface(VkInstance instance);
+
     bool handleEvents();
     bool getShouldClose() const { return _shouldClose; };
 
