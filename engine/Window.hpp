@@ -1,6 +1,7 @@
 #ifndef VKRT_WINDOW_HPP
 #define VKRT_WINDOW_HPP
 
+#include <mutex>
 #include <string>
 
 #include "SDL3/SDL.h"
@@ -15,6 +16,9 @@ namespace vkrt {
  * @note Window functions should be called from the main thread!
  */
 class Window {
+private:
+    std::mutex mutex;
+
 public:
     Window();
     Window(const std::string& windowName, int width, int height);
@@ -31,11 +35,18 @@ public:
     bool handleEvents();
     bool getShouldClose() const { return _shouldClose; };
 
+    /**
+     * @brief Gets _wasResized and expects caller to handle window resize. Sets _wasResized to false after calling.
+     * 
+     * @warning This function should only be called from the Renderer class. 
+     */
+    bool getWasResized();
+
     SDL_Window* getWindow() const { return _window; };
-    int getWidth() const { return _width; };
-    int getHeight() const { return _height; };
-    int getFramebufferWidth() const { return _framebufferWidth; };
-    int getFramebufferHeight() const { return _framebufferHeight; };
+    int getWidth() { std::lock_guard<std::mutex> guard(mutex); return _width; };
+    int getHeight() { std::lock_guard<std::mutex> guard(mutex); return _height; };
+    int getFramebufferWidth() { std::lock_guard<std::mutex> guard(mutex); return _framebufferWidth; };
+    int getFramebufferHeight() { std::lock_guard<std::mutex> guard(mutex); return _framebufferHeight; };
 
 private:
     static int _instanceCount;
@@ -48,6 +59,7 @@ private:
     int _framebufferHeight = 0;
 
     bool _shouldClose = false;
+    bool _wasResized = false;
 };
 
 } // namespace vkrt
