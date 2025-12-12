@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "ModelLoader.hpp"
 #include "Renderer.hpp"
 #include "Window.hpp"
 
@@ -24,6 +25,7 @@ private:
 
     std::unique_ptr<Window> _window;
     std::unique_ptr<Renderer> _renderer;
+    std::unique_ptr<ModelLoader> _modelLoader;
 };
 
 } // namespace vkrt
