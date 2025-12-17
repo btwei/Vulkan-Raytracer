@@ -18,4 +18,35 @@ VkImageViewCreateInfo defaultImageViewInfo(VkImage image, VkFormat format, VkIma
     return createInfo;
 }
 
+VkCommandPoolCreateInfo defaultCommandPoolInfo(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags) {
+    VkCommandPoolCreateInfo poolInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+    poolInfo.flags = flags;
+    poolInfo.queueFamilyIndex = queueFamilyIndex;
+
+    return poolInfo;
+}
+
+VkCommandBufferAllocateInfo defaultCommandBufferAllocateInfo(VkCommandPool commandPool, uint32_t count, VkCommandBufferLevel level) {
+    VkCommandBufferAllocateInfo allocInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = level;
+    allocInfo.commandBufferCount = count;
+
+    return allocInfo;
+}
+
+VkFenceCreateInfo defaultFenceInfo(VkFenceCreateFlags flags) {
+    VkFenceCreateInfo fenceInfo{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+    fenceInfo.flags = flags;
+
+    return fenceInfo;
+}
+
+VkSemaphoreCreateInfo defaultSemaphoreInfo(VkSemaphoreCreateFlags flags) {
+    VkSemaphoreCreateInfo semaphoreInfo{ .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+    semaphoreInfo.flags = flags;
+    
+    return semaphoreInfo;
+}
+
 }
