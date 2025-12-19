@@ -49,4 +49,25 @@ VkSemaphoreCreateInfo defaultSemaphoreInfo(VkSemaphoreCreateFlags flags) {
     return semaphoreInfo;
 }
 
+VkCommandBufferBeginInfo defaultCommandBufferBeginInfo(VkCommandBufferUsageFlags flags /* = 0 */, const VkCommandBufferInheritanceInfo* pInheritanceInfo /* = VK_NULL_HANDLE */) {
+    VkCommandBufferBeginInfo beginInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    beginInfo.flags = flags;
+    beginInfo.pInheritanceInfo = pInheritanceInfo;
+
+    return beginInfo;
+}
+
+VkSubmitInfo defaultSubmitInfo(std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> signalSempahores, std::vector<VkSemaphore> waitSempahores, std::vector<VkPipelineStageFlags> waitStages) {
+    VkSubmitInfo submitInfo{ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    submitInfo.commandBufferCount = commandBuffers.size();
+    submitInfo.pCommandBuffers = commandBuffers.data();
+    submitInfo.signalSemaphoreCount = signalSempahores.size();
+    submitInfo.pSignalSemaphores = signalSempahores.data();
+    submitInfo.waitSemaphoreCount = waitSempahores.size();
+    submitInfo.pWaitSemaphores = waitSempahores.data();
+    submitInfo.pWaitDstStageMask = waitStages.data();
+
+    return submitInfo;
+}
+
 }

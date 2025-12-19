@@ -1,6 +1,8 @@
 #ifndef VKRT_VULKANINITIALIZERS_HPP
 #define VKRT_VULKANINITIALIZERS_HPP
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 
 namespace vkrt::init {
@@ -14,6 +16,10 @@ VkCommandBufferAllocateInfo defaultCommandBufferAllocateInfo(VkCommandPool comma
 VkFenceCreateInfo defaultFenceInfo(VkFenceCreateFlags flags = 0);
 
 VkSemaphoreCreateInfo defaultSemaphoreInfo(VkSemaphoreCreateFlags flags = 0);
+
+VkCommandBufferBeginInfo defaultCommandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0, const VkCommandBufferInheritanceInfo* pInheritanceInfo = VK_NULL_HANDLE);
+
+VkSubmitInfo defaultSubmitInfo(std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> signalSempahores = {}, std::vector<VkSemaphore> waitSempahores = {}, std::vector<VkPipelineStageFlags> waitStages = {});
 
 } // namespace vkrt::init
 
