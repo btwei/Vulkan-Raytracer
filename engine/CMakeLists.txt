@@ -13,6 +13,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL ${CMAKE_CURRENT_BIN
 # Add vk-bootstrap as a subdirectory
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap ${CMAKE_CURRENT_BINARY_DIR}/vk-bootstrap)
 
+# Add VMA as a subdirectory
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator ${CMAKE_CURRENT_BINARY_DIR}/VulkanMemoryAllocator)
+
 # Add *.cpp to a list of sources
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/*.cpp)
 
@@ -29,4 +32,5 @@ target_include_directories(engine
 target_link_libraries(engine 
     PRIVATE Vulkan::Vulkan
     SDL3::SDL3 
-    vk-bootstrap::vk-bootstrap)
+    vk-bootstrap::vk-bootstrap
+    GPUOpen::VulkanMemoryAllocator)
