@@ -44,8 +44,8 @@ void Renderer::cleanup() {
             vkDestroyCommandPool(_device, data._commandPool, nullptr);
             vkDestroyFence(_device, data._renderFence, nullptr);
             vkDestroyFence(_device, data._swapchainFence, nullptr);
-            vkDestroySemaphore(_device, data._renderSemaphore, nullptr);
-            vkDestroySemaphore(_device, data._swapchainSemaphore, nullptr);
+            vkDestroySemaphore(_device, data._acquireToRenderSemaphore, nullptr);
+            vkDestroySemaphore(_device, data._renderToPresentSemaphore, nullptr);
         }
 
         // Cleanup current swapchain
@@ -250,8 +250,8 @@ void Renderer::initCommandResources() {
 void Renderer::initSyncResources() {
     for(auto& data : _frameData) {
         VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
-        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._renderSemaphore));
-        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._swapchainSemaphore));
+        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._acquireToRenderSemaphore));
+        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._renderToPresentSemaphore));
 
         VkFenceCreateInfo fenceInfo = init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
         VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._renderFence));

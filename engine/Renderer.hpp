@@ -20,8 +20,8 @@ struct FrameData {
 
     VkFence _renderFence;
     VkFence _swapchainFence;
-    VkSemaphore _renderSemaphore;
-    VkSemaphore _swapchainSemaphore;
+    VkSemaphore _acquireToRenderSemaphore;
+    VkSemaphore _renderToPresentSemaphore;
 };
 
 class Renderer {
