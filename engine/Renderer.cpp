@@ -18,17 +18,35 @@ Renderer::~Renderer() {
 void Renderer::init() {
     initVulkanBootstrap();
     createSwapchainResources();
+    initCommandResources();
+    initSyncResources();
 }
 
-void Renderer::submitFrame() {
+void Renderer::renderScene(SceneManager* sceneManager) {
+    // Update BLAS
+
+    // Update TLAS
+
+    // Render with 1 Sample per Pixel
 
 }
 
 void Renderer::cleanup() {
+    // Generally, destroy objects in reverse order of creation
+
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
 
-        // Generally, destroy objects in reverse order of creation
+        vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
+        vkDestroyFence(_device, _immediateFence, nullptr);
+        // Cleanup frameData
+        for(auto& data : _frameData) {
+            vkDestroyCommandPool(_device, data._commandPool, nullptr);
+            vkDestroyFence(_device, data._renderFence, nullptr);
+            vkDestroyFence(_device, data._swapchainFence, nullptr);
+            vkDestroySemaphore(_device, data._renderSemaphore, nullptr);
+            vkDestroySemaphore(_device, data._swapchainSemaphore, nullptr);
+        }
 
         // Cleanup current swapchain
         for(auto& imageView : _swapchainImageViews) {
@@ -41,6 +59,7 @@ void Renderer::cleanup() {
     }
 
     if(_instance != VK_NULL_HANDLE) {
+        // Continue cleaning up core Vulkan objects
         vkDestroySurfaceKHR(_instance, _surface, nullptr);
         vkb::destroy_debug_utils_messenger(_instance, _debugMessenger, nullptr);
         vkDestroyInstance(_instance, nullptr);
@@ -202,9 +221,59 @@ void Renderer::resizeSwapchainResources() {
     // The key to smooth resizing is to not call vkWaitDevice and instead push these to be destroyed later
 
     // So, push resources into a destruction queue
+    // @todo destruction queue
 
     // And create new swapchain resources -- that straight up overwrite the old values
     createSwapchainResources();
+}
+
+void Renderer::initCommandResources() {
+    // Initialize per frame command resources
+    for(auto& data : _frameData) {
+        VkCommandPoolCreateInfo poolInfo = init::defaultCommandPoolInfo(_graphicsQueueFamilyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+                                                                                                   VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+        if(vkCreateCommandPool(_device, &poolInfo, nullptr, &data._commandPool) != VK_SUCCESS) throw std::runtime_error("Failed to create Vulkan command pool!");
+        
+        VkCommandBufferAllocateInfo allocInfo = init::defaultCommandBufferAllocateInfo(data._commandPool);
+        vkAllocateCommandBuffers(_device, &allocInfo, &data._mainCommandBuffer);
+    }
+
+    // Initialize immediate command resources
+    VkCommandPoolCreateInfo poolInfo = init::defaultCommandPoolInfo(_graphicsQueueFamilyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+                                                                                               VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    if(vkCreateCommandPool(_device, &poolInfo, nullptr, &_immediateCommandPool) != VK_SUCCESS) throw std::runtime_error("Failed to create Vulkan command pool!");
+    
+    VkCommandBufferAllocateInfo allocInfo = init::defaultCommandBufferAllocateInfo(_immediateCommandPool);
+    vkAllocateCommandBuffers(_device, &allocInfo, &_immediateCommandBuffer);
+}
+
+void Renderer::initSyncResources() {
+    for(auto& data : _frameData) {
+        VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
+        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._renderSemaphore));
+        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._swapchainSemaphore));
+
+        VkFenceCreateInfo fenceInfo = init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+        VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._renderFence));
+        VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._swapchainFence));
+    }
+}
+
+void Renderer::immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {
+    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &_immediateFence));
+    VK_REQUIRE_SUCCESS(vkResetCommandBuffer(_immediateCommandBuffer, 0));
+
+    VkCommandBufferBeginInfo beginInfo = init::defaultCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(_immediateCommandBuffer, &beginInfo));
+
+    function(_immediateCommandBuffer);
+
+    VK_REQUIRE_SUCCESS(vkEndCommandBuffer(_immediateCommandBuffer));
+
+    VkSubmitInfo submitInfo = init::defaultSubmitInfo({_immediateCommandBuffer});
+    vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _immediateFence);
+
+    VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &_immediateFence, true, 9'999'999'999));
 }
 
 } //namespace vkrt
