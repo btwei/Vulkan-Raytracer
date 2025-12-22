@@ -27,7 +27,8 @@ target_include_directories(engine
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} 
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/include 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap/src)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator/include)
 
 target_link_libraries(engine 
     PRIVATE Vulkan::Vulkan
