@@ -7,6 +7,8 @@
 
 namespace vkrt::init {
 
+VkImageCreateInfo defaultImageInfo(VkExtent3D extent, VkFormat format, VkImageUsageFlags usageFlags);
+
 VkImageViewCreateInfo defaultImageViewInfo(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 
 VkCommandPoolCreateInfo defaultCommandPoolInfo(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags = 0);

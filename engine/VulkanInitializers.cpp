@@ -2,6 +2,27 @@
 
 namespace vkrt::init {
 
+VkImageCreateInfo defaultImageInfo(VkExtent3D extent, VkFormat format, VkImageUsageFlags usageFlags) {
+    VkImageCreateInfo createInfo{ .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    createInfo.imageType = VK_IMAGE_TYPE_2D;
+    createInfo.format = format;
+    createInfo.extent = extent;
+    createInfo.mipLevels = 1;
+    createInfo.arrayLayers = 1;
+
+    createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    createInfo.usage = usageFlags;
+
+    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    //createInfo.queueFamilyIndexCount = 0;
+    //createInfo.pQueueFamilyIndices = nullptr;
+
+    //createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // UNDEFINED is 0
+
+    return createInfo;
+}
+
 VkImageViewCreateInfo defaultImageViewInfo(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags /* = VK_IMAGE_ASPECT_COLOR_BIT */) {
     VkImageViewCreateInfo createInfo{ .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     createInfo.pNext = nullptr;
