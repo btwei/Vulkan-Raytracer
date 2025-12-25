@@ -20,9 +20,10 @@ void Renderer::init() {
     createSwapchainResources();
     initCommandResources();
     initSyncResources();
+    initVMA();
 }
 
-void Renderer::renderScene(SceneManager* sceneManager) {
+void Renderer::renderScene() {
     // Update BLAS
 
     // Update TLAS
@@ -36,6 +37,8 @@ void Renderer::cleanup() {
 
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
+
+        vmaDestroyAllocator(_allocator);
 
         vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
         vkDestroyFence(_device, _immediateFence, nullptr);
@@ -64,6 +67,56 @@ void Renderer::cleanup() {
         vkb::destroy_debug_utils_messenger(_instance, _debugMessenger, nullptr);
         vkDestroyInstance(_instance, nullptr);
     }
+}
+
+AllocatedBuffer Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags /* = 0 */, VmaMemoryUsage memoryUsage /* = VMA_MEMORY_USAGE_AUTO */) {
+    AllocatedBuffer buf;
+    VkBufferCreateInfo bufferInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = memoryUsage;
+    allocInfo.flags = flags;
+
+    VK_REQUIRE_SUCCESS(vmaCreateBuffer(_allocator, &bufferInfo, &allocInfo, &buf.buffer, &buf.allocation, &buf.info));
+    return buf;
+}
+
+void Renderer::destroyBuffer(AllocatedBuffer buffer) {
+    vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
+} 
+
+AllocatedImage Renderer::createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped) {
+    // Create the allocated image and set the format and extent immediately
+    AllocatedImage image;
+    image.imageFormat = format;
+    image.imageExtent = extent;
+
+    VkImageCreateInfo imageInfo = init::defaultImageInfo(extent, format, usage);
+    if(mipmapped) imageInfo.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    // Create the image via VMA and attach the image and allocation to the AllocatedImage
+    VK_REQUIRE_SUCCESS(vmaCreateImage(_allocator, &imageInfo, &allocInfo, &image.image, &image.allocation, nullptr));
+
+    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if(format == VK_FORMAT_D32_SFLOAT) aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    VkImageViewCreateInfo viewInfo = init::defaultImageViewInfo(image.image, image.imageFormat, aspectFlag);
+    viewInfo.subresourceRange.levelCount = imageInfo.mipLevels;
+
+    // Finally, create the image view and also attach it to the AllocatedImage
+    VK_REQUIRE_SUCCESS(vkCreateImageView(_device, &viewInfo, nullptr, &image.imageView));
+    return image;
+}
+
+void Renderer::destroyImage(AllocatedImage image) {
+    vkDestroyImageView(_device, image.imageView, nullptr);
+    vmaDestroyImage(_allocator, image.image, image.allocation);
 }
 
 void Renderer::initVulkanBootstrap() {
@@ -257,6 +310,16 @@ void Renderer::initSyncResources() {
         VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._renderFence));
         VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._swapchainFence));
     }
+}
+
+void Renderer::initVMA() {
+    VmaAllocatorCreateInfo allocatorCreateInfo{};
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+    allocatorCreateInfo.physicalDevice = _physicalDevice;
+    allocatorCreateInfo.device = _device;
+    allocatorCreateInfo.instance = _instance;
+
+    vmaCreateAllocator(&allocatorCreateInfo, &_allocator);
 }
 
 void Renderer::immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {

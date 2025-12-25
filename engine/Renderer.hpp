@@ -5,6 +5,7 @@
 
 #include <VkBootstrap.h>
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 #include "SceneManager.hpp"
 #include "VulkanTypes.hpp"
@@ -30,16 +31,23 @@ public:
     ~Renderer();
 
     void init();
-    void renderScene(SceneManager* sceneManager);
+    void renderScene();
     void cleanup();
 
-    //AllocatedBuffer uploadBuffer();
-    //AllocatedImage uploadImage();
+    uint64_t getFrameNumber() { return _frameCount; }
+
+    AllocatedBuffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags = 0, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
+    //AllocatedBuffer uploadBuffer(std::span<Vertex>& vertices, std::span<uint32_t> indices);
+    void destroyBuffer(AllocatedBuffer buffer);
+
+    AllocatedImage createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+    void destroyImage(AllocatedImage image);
     //void buildBLAS();
     
 private:
     bool _isInitialized = false;
     bool _shouldResize = false;
+    uint64_t _frameCount = 0;
 
     Window* _window = nullptr;
 
@@ -66,11 +74,14 @@ private:
 
     FrameData _frameData[NUM_FRAMES_IN_FLIGHT];
 
+    VmaAllocator _allocator;
+
     void initVulkanBootstrap();
     void createSwapchainResources(VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
     void resizeSwapchainResources();
     void initCommandResources();
     void initSyncResources();
+    void initVMA();
 
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 };
