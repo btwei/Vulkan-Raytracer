@@ -5,7 +5,14 @@
 
 namespace vkrt::utils {
     
-void defaultImageTransition(VkCommandBuffer cmdBuf, VkImage image, VkImageLayout srcLayout, VkImageLayout dstLayout);
+void defaultImageTransition(VkCommandBuffer cmdBuf,
+                            VkImage image,
+                            VkImageLayout oldLayout,
+                            VkImageLayout newLayout,
+                            VkAccessFlags srcAccessMask,
+                            VkAccessFlags dstAccessMask,
+                            VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask);
 
 }
 
