@@ -12,7 +12,13 @@ void defaultImageTransition(VkCommandBuffer cmdBuf,
                             VkAccessFlags srcAccessMask,
                             VkAccessFlags dstAccessMask,
                             VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask);
+                            VkPipelineStageFlags dstStageMask,
+                            uint32_t levelCount = VK_REMAINING_MIP_LEVELS);
+
+/**
+ * @note Requires all mipLevels to be in VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL first
+ */
+void generateMipmaps(VkCommandBuffer cmdBuf, VkImage image, VkExtent2D extent, uint32_t mipLevels);
 
 }
 
