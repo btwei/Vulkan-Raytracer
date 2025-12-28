@@ -37,10 +37,11 @@ public:
     uint64_t getFrameNumber() { return _frameCount; }
 
     AllocatedBuffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags = 0, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
-    //AllocatedBuffer uploadBuffer(std::span<Vertex>& vertices, std::span<uint32_t> indices);
+    GPUMeshBuffers uploadMesh(std::span<Vertex>& vertices, std::span<uint32_t> indices);
     void destroyBuffer(AllocatedBuffer buffer);
 
     AllocatedImage createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+    AllocatedImage uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
     void destroyImage(AllocatedImage image);
     //void buildBLAS();
     

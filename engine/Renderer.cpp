@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "VulkanInitializers.hpp"
+#include "VulkanUtils.hpp"
 
 namespace vkrt {
 
@@ -83,6 +84,43 @@ AllocatedBuffer Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usa
     return buf;
 }
 
+GPUMeshBuffers Renderer::uploadMesh(std::span<Vertex>& vertices, std::span<uint32_t> indices) {
+    GPUMeshBuffers meshBuffers;
+
+    // Create a host visible staging buffer
+    AllocatedBuffer stagingBuffer = createBuffer(vertices.size() + indices.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+    void* data = stagingBuffer.info.pMappedData;
+
+    memcpy(data, vertices.data(), vertices.size_bytes());
+    memcpy(data + vertices.size_bytes(), indices.data(), indices.size_bytes());
+
+    // Create device local buffers and transfer
+    meshBuffers.vertexBuffer = createBuffer(vertices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+                                                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | 
+                                                             VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | 
+                                                             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+
+    meshBuffers.indexBuffer = createBuffer(indices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                           VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
+                                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+        VkBufferCopy vertexRegion{};
+        vertexRegion.size = vertices.size();
+        vkCmdCopyBuffer(cmdBuf, stagingBuffer.buffer, meshBuffers.vertexBuffer.buffer, 1, &vertexRegion);
+
+        VkBufferCopy indexRegion{};
+        indexRegion.size = indices.size();
+        indexRegion.srcOffset = vertices.size();
+        vkCmdCopyBuffer(cmdBuf, stagingBuffer.buffer, meshBuffers.indexBuffer.buffer, 1, &indexRegion);
+    });
+
+    destroyBuffer(stagingBuffer);
+
+    return meshBuffers;
+}
+
 void Renderer::destroyBuffer(AllocatedBuffer buffer) {
     vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 } 
@@ -112,6 +150,47 @@ AllocatedImage Renderer::createImage(VkExtent3D extent, VkFormat format, VkImage
     // Finally, create the image view and also attach it to the AllocatedImage
     VK_REQUIRE_SUCCESS(vkCreateImageView(_device, &viewInfo, nullptr, &image.imageView));
     return image;
+}
+
+AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false) {
+    size_t dataSize = extent.width * extent.height * extent.depth * 4;
+    AllocatedBuffer stagingBuffer = createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+
+    memcpy(stagingBuffer.info.pMappedData, data, dataSize);
+
+    if(extent.depth != 1) mipmapped = false; // Mipmapping currently doesn't handle 3D textures (and I don't anticipate that I will be using them)
+    AllocatedImage newImage = createImage(extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
+
+    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+        utils::defaultImageTransition(cmdBuf, newImage.image,
+                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                                      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                      VK_REMAINING_MIP_LEVELS);
+
+        VkBufferImageCopy bufferRegion{};
+        bufferRegion.imageExtent = extent;
+        bufferRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        bufferRegion.imageSubresource.baseArrayLayer = 0;
+        bufferRegion.imageSubresource.layerCount = 1;
+        bufferRegion.imageSubresource.mipLevel = 0;
+
+        vkCmdCopyBufferToImage(cmdBuf, stagingBuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferRegion);
+
+        if(mipmapped) {
+            uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+            utils::generateMipmaps(cmdBuf, newImage.image, VkExtent2D{extent.width, extent.height}, mipLevels);
+        } else {
+            utils::defaultImageTransition(cmdBuf, newImage.image,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                                      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                      1);
+        }
+    });
+
+    destroyBuffer(stagingBuffer);
+    return newImage;
 }
 
 void Renderer::destroyImage(AllocatedImage image) {
@@ -149,7 +228,14 @@ void Renderer::initVulkanBootstrap() {
     _surface = _window->createSurface(_instance);
 
     // Select a physical device and create a logical device with queues
-    std::vector<const char*> requiredExtensions = { VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME };
+    std::vector<const char*> requiredExtensions = { VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+                                                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME };
+
+    VkPhysicalDeviceVulkan12Features features12{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+    features12.bufferDeviceAddress = VK_TRUE;
+
+    VkPhysicalDeviceVulkan13Features features13{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+    features13.dynamicRendering = VK_TRUE;
 
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainFeatures{};
     swapchainFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
@@ -157,6 +243,8 @@ void Renderer::initVulkanBootstrap() {
 
     vkb::PhysicalDeviceSelector deviceSelector{instance_ret.value()};
     auto phys_ret = deviceSelector.set_surface(_surface)
+                                  .set_required_features_12(features12)
+                                  .set_required_features_13(features13)
                                   .add_required_extensions(requiredExtensions)
                                   .add_required_extension_features(swapchainFeatures)
                                   .set_minimum_version(1, 3)
@@ -318,6 +406,7 @@ void Renderer::initVMA() {
     allocatorCreateInfo.physicalDevice = _physicalDevice;
     allocatorCreateInfo.device = _device;
     allocatorCreateInfo.instance = _instance;
+    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
     vmaCreateAllocator(&allocatorCreateInfo, &_allocator);
 }
