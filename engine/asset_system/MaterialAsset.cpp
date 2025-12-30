@@ -18,12 +18,19 @@ MaterialAsset::MaterialAsset(const std::string& assetId, MaterialInfo materialIn
 MaterialAsset::~MaterialAsset() { }
 
 bool MaterialAsset::onRef() {
-    bool result = true;
-    result = _assetManager->acquireAsset(diffTexture) && result;
-    result = _assetManager->acquireAsset(armTexture) && result;
-    result = _assetManager->acquireAsset(norTexture) && result;
+    std::vector<AssetHandle<TextureAsset>> loadedHandles;
 
-    return result;
+    if(_assetManager->acquireAsset(diffTexture)) loadedHandles.push_back(diffTexture);
+    if(_assetManager->acquireAsset(armTexture)) loadedHandles.push_back(armTexture);
+    if(_assetManager->acquireAsset(norTexture)) loadedHandles.push_back(norTexture);
+
+    // If one fails, release all the other references and return false
+    if(loadedHandles.size() != 3) {
+        for(auto& handle : loadedHandles) _assetManager->releaseAsset(handle);
+        return false;
+    }
+
+    return true;
 }
 
 bool MaterialAsset::onUnref() {
