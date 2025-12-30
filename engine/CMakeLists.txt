@@ -16,6 +16,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap ${CMAKE_CU
 # Add VMA as a subdirectory
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator ${CMAKE_CURRENT_BINARY_DIR}/VulkanMemoryAllocator)
 
+# Add GLM as a subdirectory
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/glm ${CMAKE_CURRENT_BINARY_DIR}/glm)
+
+# Add tinygltf as a subdirectory
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/tinygltf ${CMAKE_CURRENT_BINARY_DIR}/tinygltf)
+
 # Add *.cpp to a list of sources
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/*.cpp)
 
@@ -24,14 +30,19 @@ add_library(engine STATIC ${ENGINE_SOURCES})
 
 # NOTE: In the future, I'd consider splitting the engine/ folder into include/ and src/
 target_include_directories(engine 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} 
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/asset_system
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../external/SDL/include 
     ${CMAKE_CURRENT_SOURCE_DIR}/../external/vk-bootstrap/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/glm/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../external/tinygltf)
 
 target_link_libraries(engine 
     PRIVATE Vulkan::Vulkan
     SDL3::SDL3 
     vk-bootstrap::vk-bootstrap
-    GPUOpen::VulkanMemoryAllocator)
+    GPUOpen::VulkanMemoryAllocator
+    glm::glm
+    tinygltf)
