@@ -18,15 +18,21 @@ MaterialAsset::MaterialAsset(const std::string& assetId, MaterialInfo materialIn
 MaterialAsset::~MaterialAsset() { }
 
 bool MaterialAsset::onRef() {
-    _assetManager->acquireAsset(diffTexture);
-    _assetManager->acquireAsset(armTexture);
-    _assetManager->acquireAsset(norTexture);
+    bool result = true;
+    result = _assetManager->acquireAsset(diffTexture) && result;
+    result = _assetManager->acquireAsset(armTexture) && result;
+    result = _assetManager->acquireAsset(norTexture) && result;
+
+    return result;
 }
 
 bool MaterialAsset::onUnref() {
-    _assetManager->releaseAsset(diffTexture);
-    _assetManager->releaseAsset(armTexture);
-    _assetManager->releaseAsset(norTexture);
+    bool result = true;
+    result = _assetManager->releaseAsset(diffTexture) && result;
+    result = _assetManager->releaseAsset(armTexture) && result;
+    result = _assetManager->releaseAsset(norTexture) && result;
+
+    return result;
 }
 
 } // namespace vkrt
