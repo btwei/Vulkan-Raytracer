@@ -15,6 +15,18 @@ namespace vkrt {
 
 static const int NUM_FRAMES_IN_FLIGHT = 2;
 
+struct DeletionQueue {
+private:
+    std::queue<std::function<void()>> _deletionQueue;
+public:
+    void flushQueue() {
+        for (; !_deletionQueue.empty(); _deletionQueue.pop()) {
+            (_deletionQueue.front())();
+        }
+    }
+    void pushFunction(std::function<void()> function) {_deletionQueue.push(function); }
+};
+
 struct FrameData {
     VkCommandPool _commandPool;
     VkCommandBuffer _mainCommandBuffer;
@@ -23,6 +35,8 @@ struct FrameData {
     VkFence _swapchainFence;
     VkSemaphore _acquireToRenderSemaphore;
     VkSemaphore _renderToPresentSemaphore;
+
+    DeletionQueue _deletionQueue;
 };
 
 class Renderer {
@@ -37,12 +51,15 @@ public:
     uint64_t getFrameNumber() { return _frameCount; }
 
     AllocatedBuffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags = 0, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
-    GPUMeshBuffers uploadMesh(std::span<Vertex>& vertices, std::span<uint32_t> indices);
+    GPUMeshBuffers uploadMesh(const std::span<Vertex>& vertices, const std::span<uint32_t>& indices);
     void destroyBuffer(AllocatedBuffer buffer);
+    void enqueueBufferDestruction(AllocatedBuffer buffer);
 
     AllocatedImage createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
     AllocatedImage uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
     void destroyImage(AllocatedImage image);
+    void enqueueImageDestruction(AllocatedImage image);
+
     //void buildBLAS();
     
 private:

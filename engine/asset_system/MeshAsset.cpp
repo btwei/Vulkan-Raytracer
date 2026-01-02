@@ -2,7 +2,7 @@
 
 namespace vkrt {
 
-MeshAsset::MeshAsset(const std::string& assetId, std::span<Vertex>& vertices, std::span<uint32_t>& indices, std::vector<Submesh> meshRanges, Renderer* renderer)
+MeshAsset::MeshAsset(const std::string& assetId, const std::span<Vertex>& vertices, const std::span<uint32_t>& indices, std::vector<Submesh> meshRanges, Renderer* renderer)
     : Asset(assetId)
     , _renderer(renderer)
     , _vertices(vertices.begin(), vertices.end())
@@ -23,8 +23,8 @@ bool MeshAsset::doLoad() {
 }
 
 bool MeshAsset::doUnload() {
-    _renderer->enqueueBufferDestruction(_meshBuffers.vertexBuffer, _renderer->getFrameNumber());
-    _renderer->enqueueBufferDestruction(_meshBuffers.indexBuffer, _renderer->getFrameNumber());
+    _renderer->enqueueBufferDestruction(_meshBuffers.vertexBuffer);
+    _renderer->enqueueBufferDestruction(_meshBuffers.indexBuffer);
     return true;
 }
 

@@ -23,7 +23,7 @@ public:
         uint32_t count;
     };
 
-    MeshAsset(const std::string& assetId, std::span<Vertex>& vertices, std::span<uint32_t>& indices, std::vector<Submesh> meshRanges, Renderer* renderer);
+    MeshAsset(const std::string& assetId, const std::span<Vertex>& vertices, const std::span<uint32_t>& indices, std::vector<Submesh> meshRanges, Renderer* renderer);
     ~MeshAsset();
 protected:
     virtual bool doLoad() override;

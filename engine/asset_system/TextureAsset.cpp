@@ -49,7 +49,7 @@ bool TextureAsset::doLoad() {
 }
 
 bool TextureAsset::doUnload() {
-    _renderer->enqueueImageDestruction(_texture, _renderer->getFrameNumber());
+    _renderer->enqueueImageDestruction(_texture);
     return true;
 }
     

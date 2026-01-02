@@ -41,16 +41,19 @@ void Renderer::cleanup() {
 
         vmaDestroyAllocator(_allocator);
 
-        vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
-        vkDestroyFence(_device, _immediateFence, nullptr);
         // Cleanup frameData
         for(auto& data : _frameData) {
+            _frameData->_deletionQueue.flushQueue();
+
             vkDestroyCommandPool(_device, data._commandPool, nullptr);
             vkDestroyFence(_device, data._renderFence, nullptr);
             vkDestroyFence(_device, data._swapchainFence, nullptr);
             vkDestroySemaphore(_device, data._acquireToRenderSemaphore, nullptr);
             vkDestroySemaphore(_device, data._renderToPresentSemaphore, nullptr);
         }
+
+        vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
+        vkDestroyFence(_device, _immediateFence, nullptr);
 
         // Cleanup current swapchain
         for(auto& imageView : _swapchainImageViews) {
@@ -84,7 +87,7 @@ AllocatedBuffer Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usa
     return buf;
 }
 
-GPUMeshBuffers Renderer::uploadMesh(std::span<Vertex>& vertices, std::span<uint32_t> indices) {
+GPUMeshBuffers Renderer::uploadMesh(const std::span<Vertex>& vertices, const std::span<uint32_t>& indices) {
     GPUMeshBuffers meshBuffers;
 
     // Create a host visible staging buffer
@@ -124,6 +127,12 @@ GPUMeshBuffers Renderer::uploadMesh(std::span<Vertex>& vertices, std::span<uint3
 void Renderer::destroyBuffer(AllocatedBuffer buffer) {
     vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 } 
+
+void Renderer::enqueueBufferDestruction(AllocatedBuffer buffer) {
+    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=](){
+        destroyBuffer(buffer);
+    });
+}
 
 AllocatedImage Renderer::createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped) {
     // Create the allocated image and set the format and extent immediately
@@ -196,6 +205,12 @@ AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat for
 void Renderer::destroyImage(AllocatedImage image) {
     vkDestroyImageView(_device, image.imageView, nullptr);
     vmaDestroyImage(_allocator, image.image, image.allocation);
+}
+
+void Renderer::enqueueImageDestruction(AllocatedImage image) {
+    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=](){
+        destroyImage(image);
+    });
 }
 
 void Renderer::initVulkanBootstrap() {
