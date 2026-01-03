@@ -20,6 +20,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/VulkanMemoryAllocator $
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/glm ${CMAKE_CURRENT_BINARY_DIR}/glm)
 
 # Add tinygltf as a subdirectory
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/tinygltf ${CMAKE_CURRENT_BINARY_DIR}/tinygltf)
 
 # Add *.cpp to a list of sources
