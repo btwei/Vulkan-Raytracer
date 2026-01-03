@@ -154,11 +154,11 @@ public:
         while(true) {
             auto it = assetsOfTypeT.find(a->getId());
             // No conflicting ID
-            if(it != assetsOfTypeT.end()) {
-                AssetData data{};
-                data.asset = std::move(a);
-                assetsOfTypeT[a->getId()] = data;
-                return AssetHandle<T>(a->getId(), this);
+            if(it == assetsOfTypeT.end()) {
+                std::string id = a->getId();
+                assetsOfTypeT[a->getId()] = AssetData();
+                assetsOfTypeT[a->getId()].asset = std::move(a);
+                return AssetHandle<T>(id, this);
             
             // Must add a suffix to generate a unique ID
             } else {
