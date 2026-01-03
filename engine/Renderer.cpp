@@ -95,7 +95,7 @@ GPUMeshBuffers Renderer::uploadMesh(const std::span<Vertex>& vertices, const std
     void* data = stagingBuffer.info.pMappedData;
 
     memcpy(data, vertices.data(), vertices.size_bytes());
-    memcpy(data + vertices.size_bytes(), indices.data(), indices.size_bytes());
+    memcpy(static_cast<std::byte*>(data) + vertices.size_bytes(), indices.data(), indices.size_bytes());
 
     // Create device local buffers and transfer
     meshBuffers.vertexBuffer = createBuffer(vertices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
@@ -129,7 +129,7 @@ void Renderer::destroyBuffer(AllocatedBuffer buffer) {
 } 
 
 void Renderer::enqueueBufferDestruction(AllocatedBuffer buffer) {
-    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=](){
+    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
         destroyBuffer(buffer);
     });
 }
@@ -161,7 +161,7 @@ AllocatedImage Renderer::createImage(VkExtent3D extent, VkFormat format, VkImage
     return image;
 }
 
-AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false) {
+AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped) {
     size_t dataSize = extent.width * extent.height * extent.depth * 4;
     AllocatedBuffer stagingBuffer = createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
@@ -208,7 +208,7 @@ void Renderer::destroyImage(AllocatedImage image) {
 }
 
 void Renderer::enqueueImageDestruction(AllocatedImage image) {
-    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=](){
+    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
         destroyImage(image);
     });
 }

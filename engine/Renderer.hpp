@@ -2,6 +2,7 @@
 #define VKRT_RENDERER_HPP
 
 #include <functional>
+#include <queue>
 
 #include <VkBootstrap.h>
 #include <vulkan/vulkan.h>
