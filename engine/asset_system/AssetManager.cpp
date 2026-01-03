@@ -2,11 +2,22 @@
 
 #include <regex>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
+#include "GltfImporter.hpp"
 #include "TextureAsset.hpp"
 
 namespace vkrt {
+
+AssetManager::AssetManager(Renderer* renderer)
+    : _renderer(renderer) {
+
+}
+
+AssetManager::~AssetManager() {
+    
+}
 
 void AssetManager::init() {
     // Initialize default assets
@@ -47,89 +58,10 @@ void AssetManager::init() {
 }
 
 ImportResult AssetManager::importAsset(const std::filesystem::path& filepath) {
-    ImportResult r;
-
-    // TODO: implement importer classes (e.g. GltfImporter)
-
-    return r;
-}
-
-template<typename T>
-AssetHandle<T> AssetManager::fetchHandleById(const std::string& assetId) {
-    auto& assetsOfTypeT = assets[std::type_index(typeid(T))];
-    auto it = assetsOfTypeT.find(assetId);
-
-    if(it != assetsOfTypeT.end()) {
-        return AssetHandle<T>(assetId, this);
+    if(filepath.extension() == ".gltf" || filepath.extension() == ".glb") {
+        return importGLTF(filepath, this);
     } else {
-        return AssetHandle<T>();
-    }
-}
-
-template<typename T>
-bool acquireAsset(AssetHandle<T> assetHandle) {
-    // Find the asset
-    auto& assetsOfTypeT = assets[std::type_index(typeid(T))];
-    auto it = assetsOfTypeT.find(assetHandle.getId());
-
-    // Process the onRef call
-    if(it != assetsOfTypeT.end() && it->asset->onRef()) {
-        // If refCount was 0, process the load call
-        if(it->refCount == 0){
-            // Attempt to load the asset
-            if(it->asset->load() == false) return false;
-        }
-        it->refCount += 1;
-        return true;
-    } else {
-        // Return false if the asset was not found
-        return false;
-    }
-}
-
-template<typename T>
-bool releaseAsset(AssetHandle<T> assetHandle) {
-    auto& refCountsForTypeT = refCounts[std::type_index(typeid(T))];
-    auto it = refCountsForTypeT.find(assetHandle.getId());
-
-    if(it != refCountsForTypeT.end() && it->asset->doUnref()) {
-        if(it->refCount == 0) {
-             if(it->asset->unload() == false) return false;
-        }
-        it->refCount -= 1;
-        return true;
-    } else {
-        return false;
-    }
-}
-
-template<typename T>
-AssetHandle<T> AssetManager::registerAsset(std::shared_ptr<T> asset) {
-    Asset a = dynamic_cast<Asset>(*asset);
-    if(!a) return AssetHandle<T>();
-
-    auto& assetsOfTypeT = assets[std::type_index(typeid(T))];
-
-    // Attempt to place the asset in the asset manager
-    while(true) {
-        auto it = assetsOfTypeT.find(a.getId());
-        // No conflicting ID
-        if(it != assetsOfTypeT.end()) {
-            assetsOfTypeT[a.getId()] = AssetData(std::move(asset), 0);
-            return AssetHandle<T>(a.getId(), this);
-        
-        // Must add a suffix to generate a unique ID
-        } else {
-            std::string newId;
-            std::regex r(R"(^(.*_)(\d+)$)");
-            std::smatch match;
-            if(std::regex_search(a.getId(), match, r)) {
-                newId = match[1] + std::to_string(std::stoi(match[2]+1));
-            } else {
-                newId = a.getId() + "_1";
-            }
-            a.setId(newId);
-        }
+        return ImportResult();
     }
 }
 
