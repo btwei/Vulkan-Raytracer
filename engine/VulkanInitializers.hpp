@@ -21,7 +21,7 @@ VkSemaphoreCreateInfo defaultSemaphoreInfo(VkSemaphoreCreateFlags flags = 0);
 
 VkCommandBufferBeginInfo defaultCommandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0, const VkCommandBufferInheritanceInfo* pInheritanceInfo = VK_NULL_HANDLE);
 
-VkSubmitInfo defaultSubmitInfo(std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> signalSempahores = {}, std::vector<VkSemaphore> waitSempahores = {}, std::vector<VkPipelineStageFlags> waitStages = {});
+VkSubmitInfo defaultSubmitInfo(const std::vector<VkCommandBuffer>& commandBuffers, const std::vector<VkSemaphore>& signalSempahores = {}, const std::vector<VkSemaphore>& waitSempahores = {}, const std::vector<VkPipelineStageFlags>& waitStages = {});
 
 } // namespace vkrt::init
 

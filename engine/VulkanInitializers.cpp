@@ -78,7 +78,7 @@ VkCommandBufferBeginInfo defaultCommandBufferBeginInfo(VkCommandBufferUsageFlags
     return beginInfo;
 }
 
-VkSubmitInfo defaultSubmitInfo(std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> signalSempahores, std::vector<VkSemaphore> waitSempahores, std::vector<VkPipelineStageFlags> waitStages) {
+VkSubmitInfo defaultSubmitInfo(const std::vector<VkCommandBuffer>& commandBuffers, const std::vector<VkSemaphore>& signalSempahores, const std::vector<VkSemaphore>& waitSempahores, const std::vector<VkPipelineStageFlags>& waitStages) {
     VkSubmitInfo submitInfo{ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO };
     submitInfo.commandBufferCount = commandBuffers.size();
     submitInfo.pCommandBuffers = commandBuffers.data();
