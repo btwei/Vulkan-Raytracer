@@ -16,7 +16,12 @@ AssetManager::AssetManager(Renderer* renderer)
 }
 
 AssetManager::~AssetManager() {
-    
+    // Unload all data
+    for(auto& dataByType : assetDatas) {
+        for(auto& data : dataByType.second) {
+            if(data.second.asset->isLoaded()) data.second.asset->unload();
+        }
+    }
 }
 
 void AssetManager::init() {
