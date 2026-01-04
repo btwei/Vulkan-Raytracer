@@ -167,7 +167,9 @@ AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat for
 
     memcpy(stagingBuffer.info.pMappedData, data, dataSize);
 
+    uint32_t mipLevels = 1;
     if(extent.depth != 1) mipmapped = false; // Mipmapping currently doesn't handle 3D textures (and I don't anticipate that I will be using them)
+    if(mipmapped) mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
     AllocatedImage newImage = createImage(extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
     immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
@@ -175,7 +177,7 @@ AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat for
                                       VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       0, VK_ACCESS_TRANSFER_WRITE_BIT,
                                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                      VK_REMAINING_MIP_LEVELS);
+                                      mipLevels);
 
         VkBufferImageCopy bufferRegion{};
         bufferRegion.imageExtent = extent;
@@ -186,8 +188,7 @@ AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat for
 
         vkCmdCopyBufferToImage(cmdBuf, stagingBuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferRegion);
 
-        if(mipmapped) {
-            uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+        if(mipmapped && mipLevels != 1) {
             utils::generateMipmaps(cmdBuf, newImage.image, VkExtent2D{extent.width, extent.height}, mipLevels);
         } else {
             utils::defaultImageTransition(cmdBuf, newImage.image,
@@ -404,6 +405,9 @@ void Renderer::initCommandResources() {
 }
 
 void Renderer::initSyncResources() {
+    VkFenceCreateInfo fenceInfo = init::defaultFenceInfo();
+    VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &_immediateFence));
+
     for(auto& data : _frameData) {
         VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
         VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._acquireToRenderSemaphore));
@@ -437,7 +441,8 @@ void Renderer::immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer c
 
     VK_REQUIRE_SUCCESS(vkEndCommandBuffer(_immediateCommandBuffer));
 
-    VkSubmitInfo submitInfo = init::defaultSubmitInfo({_immediateCommandBuffer});
+    std::vector<VkCommandBuffer> cmdBufs = {_immediateCommandBuffer};
+    VkSubmitInfo submitInfo = init::defaultSubmitInfo(cmdBufs);
     vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _immediateFence);
 
     VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &_immediateFence, true, 9'999'999'999));

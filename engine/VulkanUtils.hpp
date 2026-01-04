@@ -13,7 +13,7 @@ void defaultImageTransition(VkCommandBuffer cmdBuf,
                             VkAccessFlags dstAccessMask,
                             VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
-                            uint32_t levelCount = VK_REMAINING_MIP_LEVELS);
+                            uint32_t levelCount = 1);
 
 /**
  * @note Requires all mipLevels to be in VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL first
