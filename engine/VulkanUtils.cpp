@@ -64,10 +64,10 @@ void generateMipmaps(VkCommandBuffer cmdBuf, VkImage image, VkExtent2D extent, u
 
         VkImageBlit region{};
         region.srcOffsets[0] = {0, 0, 0};
-        region.srcOffsets[1] = {std::max(mipWidth, 1), std::max(mipHeight, 1), 0};
+        region.srcOffsets[1] = {std::max(mipWidth, 1), std::max(mipHeight, 1), 1};
 
         region.dstOffsets[0] = {0, 0, 0};
-        region.dstOffsets[1] = {std::max(mipWidth/2, 1), std::max(mipHeight/2, 1), 0};
+        region.dstOffsets[1] = {std::max(mipWidth/2, 1), std::max(mipHeight/2, 1), 1};
 
         region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.srcSubresource.mipLevel = i-1;
