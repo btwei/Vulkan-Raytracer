@@ -21,8 +21,7 @@ void Engine::init(const std::string& windowName, int width, int height) {
     _renderer->init();
 
     _assetManager = std::make_unique<AssetManager>(_renderer.get());
-
-    _modelLoader = std::make_unique<ModelLoader>(_renderer.get());
+    _assetManager->init();
 }
 
 void Engine::run() {
@@ -34,11 +33,9 @@ void Engine::run() {
 }
 
 void Engine::destroy() {
+    _assetManager.release();
+    _renderer.release();
     _window->close();
-}
-
-void Engine::loadAsset(const std::filesystem::path& filepath) {
-    _assetManager->loadAsset(filepath);
 }
 
 } // namespace vkrt

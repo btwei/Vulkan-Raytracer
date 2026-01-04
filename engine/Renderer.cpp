@@ -39,8 +39,6 @@ void Renderer::cleanup() {
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
 
-        vmaDestroyAllocator(_allocator);
-
         // Cleanup frameData
         for(auto& data : _frameData) {
             _frameData->_deletionQueue.flushQueue();
@@ -54,6 +52,8 @@ void Renderer::cleanup() {
 
         vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
         vkDestroyFence(_device, _immediateFence, nullptr);
+
+        vmaDestroyAllocator(_allocator);
 
         // Cleanup current swapchain
         for(auto& imageView : _swapchainImageViews) {
