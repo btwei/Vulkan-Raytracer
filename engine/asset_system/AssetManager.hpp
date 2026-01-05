@@ -8,7 +8,11 @@
 #include <typeinfo>
 #include <unordered_map>
 
+#include "MaterialAsset.hpp"
+#include "MeshAsset.hpp"
+#include "ModelAsset.hpp"
 #include "Renderer.hpp"
+#include "TextureAsset.hpp"
 #include "VulkanTypes.hpp"
 
 namespace vkrt {
@@ -48,6 +52,11 @@ class AssetHandle;
 
 struct ImportResult {
     bool success = false;
+
+    std::vector<AssetHandle<ModelAsset>> modelHandles;
+    std::vector<AssetHandle<MeshAsset>> meshHandles;
+    std::vector<AssetHandle<MaterialAsset>> materialHandles;
+    std::vector<AssetHandle<TextureAsset>> textureHandles;
 };
 
 class AssetManager {
@@ -71,7 +80,7 @@ public:
     ImportResult importAsset(const std::filesystem::path& filepath);
 
     template<typename T>
-    AssetHandle<T> fetchHandleById(const std::string& assetId) {
+    AssetHandle<T> getHandleById(const std::string& assetId) {
         auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
         auto it = assetsOfTypeT.find(assetId);
 

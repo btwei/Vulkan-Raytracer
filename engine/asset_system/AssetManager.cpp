@@ -47,8 +47,7 @@ void AssetManager::init() {
 
     // Load an error texture
     uint32_t magentaData = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-    textureData.reserve(16*16*4);
-    textureData.clear();
+    textureData.resize(16*16*4);
     for(int x=0; x < 16; x++) {
         for(int y=0; y < 16; y++) {
             if(((x%2) ^ (y %2))) {
@@ -59,7 +58,7 @@ void AssetManager::init() {
         }
     }
 
-    registerAsset(std::make_shared<TextureAsset>("errorCheckboardTexture", textureData, VkExtent3D(16, 16, 1), _renderer));
+    registerAsset(std::make_shared<TextureAsset>("errorCheckerboardTexture", textureData, VkExtent3D(16, 16, 1), _renderer));
 }
 
 ImportResult AssetManager::importAsset(const std::filesystem::path& filepath) {
