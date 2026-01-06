@@ -8,11 +8,7 @@
 #include <typeinfo>
 #include <unordered_map>
 
-#include "MaterialAsset.hpp"
-#include "MeshAsset.hpp"
-#include "ModelAsset.hpp"
 #include "Renderer.hpp"
-#include "TextureAsset.hpp"
 #include "VulkanTypes.hpp"
 
 namespace vkrt {
@@ -49,6 +45,11 @@ private:
 
 template<typename T>
 class AssetHandle;
+
+class ModelAsset;
+class MeshAsset;
+class MaterialAsset;
+class TextureAsset;
 
 struct ImportResult {
     bool success = false;
@@ -183,6 +184,8 @@ public:
             }
         }
     }
+
+    Renderer* getRenderer() { return _renderer; }
 };
 
 /**

@@ -3,8 +3,6 @@
 
 #include "AssetManager.hpp"
 
-#include <tiny_gltf.h>
-
 namespace vkrt {
 
 ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* assetManager);
