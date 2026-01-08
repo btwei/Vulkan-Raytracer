@@ -14,13 +14,13 @@
 
 namespace vkrt {
 
-#define VK_REQUIRE_SUCCESS( func)                                                            \
-    {                                                                                        \
-        VkResult e = func;                                                                   \
-        if(e != VK_SUCCESS) {                                                                \
+#define VK_REQUIRE_SUCCESS( func)                                                                          \
+    {                                                                                                      \
+        VkResult e = func;                                                                                 \
+        if(e != VK_SUCCESS) {                                                                              \
             throw std::runtime_error(std::string(#func) + " failed with error: "+ string_VkResult(e));     \
-        }                                                                                    \
-    }                                                                                        \
+        }                                                                                                  \
+    }                                                                                                      \
 
 struct AllocatedImage {
     VkImage image;
