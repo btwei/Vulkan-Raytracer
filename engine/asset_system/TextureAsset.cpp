@@ -9,6 +9,14 @@ TextureAsset::TextureAsset(const std::string& assetId, const std::filesystem::pa
     , _filepath(filepath)
     , _renderer(renderer) { }
 
+TextureAsset::TextureAsset(const std::string& assetId, const std::vector<unsigned char>& data, VkExtent3D extent, Renderer* renderer)
+    : Asset(assetId)
+    , _renderer(renderer) {
+    for(unsigned char c : data) {
+        _data.push_back(static_cast<std::byte>(c));
+    }
+}
+
 TextureAsset::TextureAsset(const std::string& assetId, const std::vector<std::byte>& data, VkExtent3D extent, Renderer* renderer)
     : Asset(assetId)
     , _data(data)
