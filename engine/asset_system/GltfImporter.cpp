@@ -34,7 +34,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
     {
         // Load all images
         for(const auto& image : model.images) {
-            AssetHandle<TextureAsset> textureHandle = assetManager->registerAsset(std::make_shared<TextureAsset>(image.name, image.image.data(), VkExtent3D(image.width, image.height, 1), assetManager->getRenderer()));
+            AssetHandle<TextureAsset> textureHandle = assetManager->registerAsset(std::make_shared<TextureAsset>(image.name, image.image, VkExtent3D(image.width, image.height, 1), assetManager->getRenderer()));
             result.textureHandles.push_back(textureHandle);
         }
 
@@ -174,7 +174,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
                     if(material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) info.armTexture = result.textureHandles[model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source];
                 }
 
-                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_shared<MaterialAsset>(primitive.material, info, assetManager));
+                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_shared<MaterialAsset>(mesh.name + "Material" + std::to_string(primitive.material), info, assetManager));
                 result.materialHandles.push_back(materialHandle);
             }
             
