@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <optional>
 
-#include "AssetManager.hpp"
+#include "Asset.hpp"
 #include "Renderer.hpp"
 
 namespace vkrt {

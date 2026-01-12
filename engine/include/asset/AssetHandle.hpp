@@ -18,6 +18,8 @@ private:
 public:
     AssetHandle() {};
     AssetHandle(const std::string& assetId, std::weak_ptr<T> assetPointer) : _assetId(assetId), _assetPtr(assetPointer) {};
+    AssetHandle(const AssetHandle& other) : _assetId(other._assetId), _assetPtr(other._assetPtr) { };
+
 
     std::shared_ptr<T> get() { return _assetPtr.lock(); }
     const std::string& getId() { return _assetId; }

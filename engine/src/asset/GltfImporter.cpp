@@ -174,7 +174,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
                     if(material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) info.armTexture = result.textureHandles[model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source];
                 }
 
-                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_shared<MaterialAsset>(mesh.name + "Material" + std::to_string(primitive.material), info, assetManager));
+                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_shared<MaterialAsset>(mesh.name + "Material" + std::to_string(primitive.material), info));
                 result.materialHandles.push_back(materialHandle);
             }
             
@@ -185,7 +185,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
             info.mesh = meshHandle;
             info.materials = result.materialHandles;
 
-            AssetHandle<ModelAsset> modelHandle = assetManager->registerAsset(std::make_shared<ModelAsset>(mesh.name, info, assetManager));
+            AssetHandle<ModelAsset> modelHandle = assetManager->registerAsset(std::make_shared<ModelAsset>(mesh.name, info));
             result.modelHandles.push_back(modelHandle);
         }
     }

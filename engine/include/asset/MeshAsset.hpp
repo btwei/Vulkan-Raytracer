@@ -3,7 +3,8 @@
 
 #include <span>
 
-#include "AssetManager.hpp"
+#include "Asset.hpp"
+#include "Renderer.hpp"
 #include "VulkanTypes.hpp"
 
 namespace vkrt {

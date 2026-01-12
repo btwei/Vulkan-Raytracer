@@ -1,11 +1,14 @@
 #ifndef VKRT_MODELASSET_HPP
 #define VKRT_MODELASSET_HPP
 
-#include "AssetManager.hpp"
+#include "Asset.hpp"
+#include "AssetHandle.hpp"
 #include "MaterialAsset.hpp"
 #include "MeshAsset.hpp"
 
 namespace vkrt {
+
+class AssetManager;
 
 class ModelAsset : public Asset {
 public:
@@ -14,14 +17,9 @@ public:
         std::vector<AssetHandle<MaterialAsset>> materials;
     };
 
-    ModelAsset(const std::string& assetId, ModelInfo modelInfo, AssetManager* assetManager);
+    ModelAsset(const std::string& assetId, ModelInfo modelInfo);
     ~ModelAsset() override;
-protected:
-    virtual bool onRef() override;
-    virtual bool onUnref() override;
 private:
-    AssetManager* _assetManager;
-
     AssetHandle<MeshAsset> _mesh;
     std::vector<AssetHandle<MaterialAsset>> _materials;
 };

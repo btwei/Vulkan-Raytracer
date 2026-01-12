@@ -6,7 +6,6 @@
 
 #include "AssetManager.hpp"
 #include "Entity.hpp"
-#include "ModelLoader.hpp"
 #include "Renderer.hpp"
 #include "SceneManager.hpp"
 #include "Window.hpp"
@@ -22,12 +21,7 @@ public:
     void run();
     void destroy();
 
-    /**
-     * @brief loadAsset(const std::string& filepath)
-     * 
-     * @param filepath This should be a filepath relative to the binary for best practice and portability
-     */
-    void loadAsset(const std::filesystem::path& filepath);
+    AssetManager* getAssetManager() { return _assetManager.get(); }
 
 private:
     int _argc;
@@ -38,9 +32,8 @@ private:
 
     std::unique_ptr<Window> _window;
     std::unique_ptr<Renderer> _renderer;
-    std::unique_ptr<ModelLoader> _modelLoader;
-    std::unique_ptr<SceneManager> _sceneManager;
     std::unique_ptr<AssetManager> _assetManager;
+    std::unique_ptr<SceneManager> _sceneManager;
 
     std::vector<std::unique_ptr<Entity>> _entityList;
 };

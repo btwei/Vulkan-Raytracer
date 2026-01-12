@@ -8,45 +8,14 @@
 #include <typeinfo>
 #include <unordered_map>
 
+#include "Asset.hpp"
+#include "AssetHandle.hpp"
+#include "ModelAsset.hpp"
 #include "Renderer.hpp"
 #include "VulkanTypes.hpp"
 
 namespace vkrt {
 
-/**
- * @class Asset
- * @brief Assets represent any external file that is loaded into an AssetManager class. This
- * class is inherited from to implement each asset type. AssetIds are strings, which mean that these
- * need to be unique names per asset type.
- * 
- */
-class Asset {
-public:
-    Asset(const std::string& assetId) :_assetId(assetId) { }
-    virtual ~Asset() { unload(); }
-
-    const std::string& getId() const { return _assetId; }
-    void setId(const std::string& assetId) { _assetId = assetId; }
-    bool isLoaded() const { return _loaded; }
-
-    bool load() { _loaded = doLoad(); return _loaded; }
-    bool unload() { if(doUnload()) _loaded = false; return _loaded; }
-    virtual bool onRef() { return true; }
-    virtual bool onUnref() { return true; }
-
-protected:
-    virtual bool doLoad() { return true; }
-    virtual bool doUnload() { return true; }
-
-private:
-    std::string _assetId;
-    bool _loaded;
-};
-
-template<typename T>
-class AssetHandle;
-
-class ModelAsset;
 class MeshAsset;
 class MaterialAsset;
 class TextureAsset;
@@ -73,6 +42,61 @@ private:
 
     ImportResult loadGLTF(const std::filesystem::path& filepath);
 
+    // Interal asset release method for use with pairs instead of handles
+    bool releaseAsset(std::pair<std::type_index, std::string> pair) {
+        auto& refCountsForTypeT = assetDatas[pair.first];
+        auto it = refCountsForTypeT.find(pair.second);
+
+        if(it != refCountsForTypeT.end()) {
+            for(std::pair<std::type_index, std::string>& prereqPair : it->second.asset->getReferenceList()) {
+                releaseAsset(prereqPair);
+            }
+
+            if(it->second.refCount == 0) {
+                 if(it->second.asset->unload() == false) return false;
+            }
+            it->second.refCount -= 1;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // Internal asset acquisition method for use with pairs instead of handles
+    bool acquireAsset(std::pair<std::type_index, std::string> pair) {
+        // Find the asset
+        auto& assetsOfTypeT = assetDatas[pair.first];
+        auto it = assetsOfTypeT.find(pair.second);
+
+        // Process the onRef call
+        if(it != assetsOfTypeT.end()) {
+            // Acquire all referenced assets
+            std::vector<std::pair<std::type_index, std::string>> previouslyAdded;
+            for(std::pair<std::type_index, std::string>& prereqPair : it->second.asset->getReferenceList()) {
+                if(!acquireAsset(prereqPair)) {
+                    // rewind ref counts
+                    for(std::pair<std::type_index, std::string> unwindPair : previouslyAdded) {
+                        releaseAsset(unwindPair);
+                    }
+                    return false;
+                } else {
+                    previouslyAdded.push_back(prereqPair);
+                }
+            }
+
+            // If refCount was 0, process the load call
+            if(it->second.refCount == 0){
+                // Attempt to load the asset
+                if(it->second.asset->load() == false) return false;
+            }
+            it->second.refCount += 1;
+            return true;
+        } else {
+            // Return false if the asset was not found
+            return false;
+        }
+    }
+
 public:
     AssetManager(Renderer* renderer);
     ~AssetManager();
@@ -86,7 +110,8 @@ public:
         auto it = assetsOfTypeT.find(assetId);
 
         if(it != assetsOfTypeT.end()) {
-            return AssetHandle<T>(assetId, this);
+            // Restore the type from asset to type T
+            return AssetHandle<T>(assetId, std::dynamic_pointer_cast<T>(it->second.asset));
         } else {
             return AssetHandle<T>();
         }
@@ -123,7 +148,21 @@ public:
         auto it = assetsOfTypeT.find(assetHandle.getId());
 
         // Process the onRef call
-        if(it != assetsOfTypeT.end() && it->second.asset->onRef()) {
+        if(it != assetsOfTypeT.end()) {
+            // Acquire all referenced assets
+            std::vector<std::pair<std::type_index, std::string>> previouslyAdded;
+            for(std::pair<std::type_index, std::string>& prereqPair : it->second.asset->getReferenceList()) {
+                if(!acquireAsset(prereqPair)) {
+                    // rewind ref counts
+                    for(std::pair<std::type_index, std::string> unwindPair : previouslyAdded) {
+                        releaseAsset(unwindPair);
+                    }
+                    return false;
+                } else {
+                    previouslyAdded.push_back(prereqPair);
+                }
+            }
+
             // If refCount was 0, process the load call
             if(it->second.refCount == 0){
                 // Attempt to load the asset
@@ -142,7 +181,11 @@ public:
         auto& refCountsForTypeT = assetDatas[std::type_index(typeid(T))];
         auto it = refCountsForTypeT.find(assetHandle.getId());
 
-        if(it != refCountsForTypeT.end() && it->second.asset->onUnref()) {
+        if(it != refCountsForTypeT.end()) {
+            for(std::pair<std::type_index, std::string>& prereqPair : it->second.asset->getReferenceList()) {
+                releaseAsset(prereqPair);
+            }
+
             if(it->second.refCount == 0) {
                  if(it->second.asset->unload() == false) return false;
             }
@@ -168,7 +211,9 @@ public:
                 std::string id = a->getId();
                 assetsOfTypeT[a->getId()] = AssetData();
                 assetsOfTypeT[a->getId()].asset = std::move(a);
-                return AssetHandle<T>(id, this);
+
+                // Restore the type from Asset to type T
+                return AssetHandle<T>(id, std::dynamic_pointer_cast<T>(assetsOfTypeT[a->getId()].asset));
             
             // Must add a suffix to generate a unique ID
             } else {
@@ -186,25 +231,6 @@ public:
     }
 
     Renderer* getRenderer() { return _renderer; }
-};
-
-/**
- * @class AssetHandle
- * @brief AssetHandles are the user facing handles for Assets which are stored in the AssetManager
- */
-template<typename T>
-class AssetHandle {
-public:
-    AssetHandle() : _assetManager(nullptr) {};
-    AssetHandle(const std::string& assetId, AssetManager* assetManager) : _assetId(assetId), _assetManager(assetManager) {};
-
-    T* get() { return (_assetManager == nullptr) ? _assetManager->getAsset<T>(_assetId) : nullptr; }
-    const std::string& getId() { return _assetId; }
-    bool isValid() { return _assetManager && _assetManager->hasAsset<T>(_assetId); }
-
-private:
-    std::string _assetId;
-    AssetManager* _assetManager;
 };
 
 } // namespace vkrt

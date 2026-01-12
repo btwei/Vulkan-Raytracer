@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.28)
 
 project(VkrtEngine VERSION 1.0.0 LANGUAGES CXX)
 
@@ -18,23 +18,23 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/VulkanMemoryAllocator)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm)
 
 # Add tinygltf as a subdirectory
-set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF)
+option(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE)
+option(TINYGLTF_INSTALL OFF CACHE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/tinygltf)
 
 # Add *.cpp to a list of sources
-file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/*.cpp)
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/src/*.cpp)
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX "^third_party/.*$")
 
 # Add engine directory as a library
 add_library(engine STATIC ${ENGINE_SOURCES})
 
 # NOTE: In the future, I'd consider splitting the engine/ folder into include/ and src/
 target_include_directories(engine 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/asset_system
-    ${CMAKE_CURRENT_SOURCE_DIR}/ecs_system
-    ${CMAKE_CURRENT_SOURCE_DIR}/rendering_system
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/asset
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rendering
     ${Vulkan_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/include 
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vk-bootstrap/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VulkanMemoryAllocator/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/glm/glm
