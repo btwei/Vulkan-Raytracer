@@ -213,7 +213,7 @@ public:
                 assetsOfTypeT[a->getId()].asset = std::move(a);
 
                 // Restore the type from Asset to type T
-                return AssetHandle<T>(id, std::dynamic_pointer_cast<T>(assetsOfTypeT[a->getId()].asset));
+                return AssetHandle<T>(id, std::dynamic_pointer_cast<T>(assetsOfTypeT[id].asset));
             
             // Must add a suffix to generate a unique ID
             } else {
