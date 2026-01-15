@@ -74,7 +74,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
                 const tinygltf::BufferView* colorBufferView = nullptr;
                 const tinygltf::Buffer* colorBuffer = nullptr;
 
-                if(hasTexCoords) {
+                if(hasColor) {
                     colorAccessor = &model.accessors[primitive.attributes.at("COLOR_0")];
                     colorBufferView = &model.bufferViews[colorAccessor->bufferView];
                     colorBuffer = &model.buffers[colorBufferView->buffer];
