@@ -37,6 +37,7 @@ private:
     };
 
     Renderer* _renderer;
+    std::string _binaryPath;
 
     std::unordered_map<std::type_index, std::unordered_map<std::string, AssetData>> assetDatas;
 
@@ -101,7 +102,17 @@ public:
     AssetManager(Renderer* renderer);
     ~AssetManager();
 
-    void init();
+    /**
+     * @brief Initializes the AssetManager class. Must be called before using the AssetManager.
+     * Initializes the binary filepath and default assets for use with engine and importing.
+     */
+    void init(const std::string& binaryPath);
+
+    /**
+     * @brief Imports the asset at the target filepath. Filepaths point to a resource in the assets/ folder.
+     * 
+     * @example importAsset("horse_statue_01_8k/horse_statue_01_8k.gltf")
+     */
     ImportResult importAsset(const std::filesystem::path& filepath);
 
     template<typename T>

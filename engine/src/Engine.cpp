@@ -21,7 +21,7 @@ void Engine::init(const std::string& windowName, int width, int height) {
     _renderer->init();
 
     _assetManager = std::make_unique<AssetManager>(_renderer.get());
-    _assetManager->init();
+    _assetManager->init(_window->getBinaryPath());
 }
 
 void Engine::run() {

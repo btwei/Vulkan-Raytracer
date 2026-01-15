@@ -74,4 +74,9 @@ bool Window::getWasResized() {
     return resized;
 }
 
+std::string Window::getBinaryPath() const {
+    // Copies the const char* into a std::string and returns
+    return SDL_GetBasePath();
+}
+
 }

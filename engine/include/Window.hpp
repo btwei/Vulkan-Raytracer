@@ -13,7 +13,7 @@ namespace vkrt {
  * @class Window
  * @brief Handles windowing via SDL3 using RAII principles
  * 
- * @note Window functions should be called from the main thread!
+ * @note Window functions should be called from the main thread
  */
 class Window {
 private:
@@ -41,6 +41,11 @@ public:
      * @warning This function should only be called from the Renderer class. 
      */
     bool getWasResized();
+
+    /**
+     * @brief Provides a SDL utility to get the executable's path without compromising cross-compatibility
+     */
+    std::string getBinaryPath() const;
 
     SDL_Window* getWindow() const { return _window; };
     int getWidth() { std::lock_guard<std::mutex> guard(mutex); return _width; };

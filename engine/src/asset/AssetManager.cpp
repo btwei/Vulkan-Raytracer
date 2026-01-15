@@ -24,7 +24,9 @@ AssetManager::~AssetManager() {
     }
 }
 
-void AssetManager::init() {
+void AssetManager::init(const std::string& binaryPath) {
+    _binaryPath = binaryPath;
+
     // Initialize default assets
     // Load a default white texture
     std::vector<std::byte> textureData(4);
@@ -63,7 +65,7 @@ void AssetManager::init() {
 
 ImportResult AssetManager::importAsset(const std::filesystem::path& filepath) {
     if(filepath.extension() == ".gltf" || filepath.extension() == ".glb") {
-        return importGLTF(filepath, this);
+        return importGLTF(_binaryPath + filepath.string(), this);
     } else {
         return ImportResult();
     }
