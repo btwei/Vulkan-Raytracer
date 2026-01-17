@@ -34,6 +34,7 @@ target_include_directories(engine
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/asset
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rendering
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ecs
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vk-bootstrap/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VulkanMemoryAllocator/include

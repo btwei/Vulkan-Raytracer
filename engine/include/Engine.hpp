@@ -5,7 +5,7 @@
 #include <string>
 
 #include "AssetManager.hpp"
-#include "Entity.hpp"
+#include "EntityManager.hpp"
 #include "Renderer.hpp"
 #include "SceneManager.hpp"
 #include "Window.hpp"
@@ -33,6 +33,7 @@ private:
     std::unique_ptr<Window> _window;
     std::unique_ptr<Renderer> _renderer;
     std::unique_ptr<AssetManager> _assetManager;
+    std::unique_ptr<EntityManager> _entityManager;
     std::unique_ptr<SceneManager> _sceneManager;
 
     std::vector<std::unique_ptr<Entity>> _entityList;

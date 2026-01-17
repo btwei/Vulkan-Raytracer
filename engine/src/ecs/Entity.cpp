@@ -2,4 +2,4 @@
 
 namespace vkrt {
     
-}
+} // namespace vkrt
