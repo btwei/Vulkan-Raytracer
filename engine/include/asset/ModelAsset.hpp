@@ -19,6 +19,10 @@ public:
 
     ModelAsset(const std::string& assetId, ModelInfo modelInfo);
     ~ModelAsset() override;
+
+    AssetHandle<MeshAsset> getMeshHandle() const {return _mesh; }
+    std::vector<AssetHandle<MaterialAsset>> getMaterials() const { return _materials; }
+
 private:
     AssetHandle<MeshAsset> _mesh;
     std::vector<AssetHandle<MaterialAsset>> _materials;
