@@ -3,11 +3,17 @@
 
 namespace vkrt {
     
+/**
+ * @class Component
+ * @brief Base component class
+ * 
+ * This class acts as a base class for components in the ECS
+ * system. The philosophy is that components contain state but
+ * no behaviour ideally.
+ */
 class Component {
 public:
-
-private:
-
+    virtual ~Component() = default;
 };
 
 } // namespace vkrt
