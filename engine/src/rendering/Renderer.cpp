@@ -103,10 +103,16 @@ GPUMeshBuffers Renderer::uploadMesh(const std::span<Vertex>& vertices, const std
                                                              VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | 
                                                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
+    VkBufferDeviceAddressInfo vertexBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = meshBuffers.vertexBuffer.buffer };
+    meshBuffers.vertexBufferAddress = vkGetBufferDeviceAddress(_device, &vertexBufferAddressInfo);
+
     meshBuffers.indexBuffer = createBuffer(indices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                                                            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
                                                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+    VkBufferDeviceAddressInfo indexBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = meshBuffers.indexBuffer.buffer };
+    meshBuffers.indexBufferAddress = vkGetBufferDeviceAddress(_device, &indexBufferAddressInfo);
 
     immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
         VkBufferCopy vertexRegion{};
@@ -213,6 +219,29 @@ void Renderer::enqueueImageDestruction(AllocatedImage image) {
         destroyImage(image);
     });
 }
+
+/*
+void Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount) {
+    VkAccelerationStructureGeometryTrianglesDataKHR triangleData{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
+    triangleData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+    triangleData.vertexData.deviceAddress = meshBuffers.vertexBufferAddress;
+    triangleData.vertexData = sizeof(Vertex);
+    triangleData.maxVertex = ;
+    triangleData.indexType = VK_INDEX_TYPE_UINT32;
+    triangleData.indexData = ;
+
+    VkAccelerationStructureGeometryDataKHR geometryData;
+    geometryData.triangles = triangleData;
+
+    VkAccelerationStructureGeometryKHR blasGeometry{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
+    blasGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+    blasGeometry.geometry = ;
+    blasGeometry.flags = ;
+
+    VkAccelerationStructureBuildGeometryInfoKHR blasBuildGeometryInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+    blasBuildGeometryInfo
+}
+*/
 
 void Renderer::initVulkanBootstrap() {
     // For debug builds, enable validation layers

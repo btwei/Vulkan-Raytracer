@@ -58,7 +58,8 @@ struct GPUMeshBuffers {
     AllocatedBuffer vertexBuffer;
     AllocatedBuffer indexBuffer;
 
-    VkAccelerationStructureKHR blas;
+    VkDeviceAddress vertexBufferAddress;
+    VkDeviceAddress indexBufferAddress;
 };
 
 }

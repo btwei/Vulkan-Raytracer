@@ -61,7 +61,7 @@ public:
     void destroyImage(AllocatedImage image);
     void enqueueImageDestruction(AllocatedImage image);
 
-    //void buildBLAS();
+    //void createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount);
     
 private:
     bool _isInitialized = false;
