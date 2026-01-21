@@ -9,7 +9,7 @@ namespace vkrt {
 
 class CameraComponent : public Component {
 public:
-    float fov = 45.0f;
+    float fov = 90.0f;
     float aspectRatio = 16.0f / 9.0f; // Based on the window dimensions - width / height
     float nearPlane = 0.1f; // Tmin
     float farPlane = 1000.0f; // Tmax

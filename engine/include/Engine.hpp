@@ -7,7 +7,6 @@
 #include "AssetManager.hpp"
 #include "EntityManager.hpp"
 #include "Renderer.hpp"
-#include "SceneManager.hpp"
 #include "Window.hpp"
 
 namespace vkrt {
@@ -22,6 +21,7 @@ public:
     void destroy();
 
     AssetManager* getAssetManager() { return _assetManager.get(); }
+    EntityManager* getEntityManager() { return _entityManager.get(); }
 
 private:
     int _argc;
@@ -34,9 +34,6 @@ private:
     std::unique_ptr<Renderer> _renderer;
     std::unique_ptr<AssetManager> _assetManager;
     std::unique_ptr<EntityManager> _entityManager;
-    std::unique_ptr<SceneManager> _sceneManager;
-
-    std::vector<std::unique_ptr<Entity>> _entityList;
 };
 
 } // namespace vkrt

@@ -55,7 +55,7 @@ public:
     template<typename T>
     bool removeComponent() {
         for(auto it = _componentList.begin(); it != _componentList.end(); ++it) {
-            if(dynamic_cast<T*>(component.get())) {
+            if(dynamic_cast<T*>(it->get())) {
                 _componentList.erase(it);
                 return true;
             }

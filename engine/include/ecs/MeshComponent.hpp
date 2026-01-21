@@ -33,6 +33,11 @@ public:
 
     AssetHandle<MeshAsset> meshHandle;
     std::vector<AssetHandle<MaterialAsset>> materialHandles;
+    
+    /**
+     * @brief tracks the acquired/released status of the handles in the assetManager
+     */
+    bool isAcquired = false;
 };
 
 } // namespace vkrt

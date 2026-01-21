@@ -22,17 +22,23 @@ void Engine::init(const std::string& windowName, int width, int height) {
 
     _assetManager = std::make_unique<AssetManager>(_renderer.get());
     _assetManager->init(_window->getBinaryPath());
+
+    _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get());
+    _entityManager->init();
 }
 
 void Engine::run() {
     while(!_window->getShouldClose()) {
         _window->handleEvents();
 
+        _entityManager->update();
+
         _renderer->renderScene();
     }
 }
 
 void Engine::destroy() {
+    _entityManager.release();
     _assetManager.release();
     _renderer.release();
     _window->close();
