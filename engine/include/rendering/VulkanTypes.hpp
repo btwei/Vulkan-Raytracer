@@ -62,6 +62,11 @@ struct GPUMeshBuffers {
     VkDeviceAddress indexBufferAddress;
 };
 
+struct BlasResources {
+    AllocatedBuffer blasBuffer;
+    VkAccelerationStructureKHR blas;
+};
+
 }
 
 inline void hash_combine(std::size_t& seed, std::size_t value) noexcept {

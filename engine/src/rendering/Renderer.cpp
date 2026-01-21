@@ -220,28 +220,67 @@ void Renderer::enqueueImageDestruction(AllocatedImage image) {
     });
 }
 
-/*
-void Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount) {
+BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount) {
+    BlasResources blasResources;
+    
     VkAccelerationStructureGeometryTrianglesDataKHR triangleData{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
     triangleData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
     triangleData.vertexData.deviceAddress = meshBuffers.vertexBufferAddress;
-    triangleData.vertexData = sizeof(Vertex);
-    triangleData.maxVertex = ;
+    triangleData.vertexStride = sizeof(Vertex);
+    triangleData.maxVertex = vertexCount - 1;
     triangleData.indexType = VK_INDEX_TYPE_UINT32;
-    triangleData.indexData = ;
+    triangleData.indexData.deviceAddress = meshBuffers.indexBufferAddress;
 
     VkAccelerationStructureGeometryDataKHR geometryData;
     geometryData.triangles = triangleData;
 
     VkAccelerationStructureGeometryKHR blasGeometry{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
     blasGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    blasGeometry.geometry = ;
-    blasGeometry.flags = ;
+    blasGeometry.geometry = geometryData;
+    blasGeometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // Temporary, until transparency is implemented at a later time
 
     VkAccelerationStructureBuildGeometryInfoKHR blasBuildGeometryInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
-    blasBuildGeometryInfo
+    blasBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    blasBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    blasBuildGeometryInfo.geometryCount = 1;
+    blasBuildGeometryInfo.pGeometries = &blasGeometry;
+
+    uint32_t maxPrimitiveCount = 1;
+    VkAccelerationStructureBuildSizesInfoKHR blasBuildSizes;
+    vkGetAccelerationStructureBuildSizesKHR(_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &blasBuildGeometryInfo, &maxPrimitiveCount, &blasBuildSizes);
+
+    blasResources.blasBuffer = createBuffer(blasBuildSizes.accelerationStructureSize,
+                                            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+    AllocatedBuffer scratchBuffer = createBuffer(blasBuildSizes.buildScratchSize, 
+                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    VkBufferDeviceAddressInfo scratchAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = scratchBuffer.buffer };
+    VkDeviceAddress scratchAddress = vkGetBufferDeviceAddress(_device, &scratchAddressInfo); 
+
+    VkAccelerationStructureCreateInfoKHR blasCreateInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+    blasCreateInfo.buffer = blasResources.blasBuffer.buffer;
+    blasCreateInfo.offset = 0;
+    blasCreateInfo.size = blasBuildSizes.accelerationStructureSize;
+    blasCreateInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
+    vkCreateAccelerationStructureKHR(_device, &blasCreateInfo, nullptr, &blasResources.blas);
+
+    blasBuildGeometryInfo.scratchData.deviceAddress = scratchAddress;
+    blasBuildGeometryInfo.dstAccelerationStructure = blasResources.blas;
+
+    VkAccelerationStructureBuildRangeInfoKHR blasRangeInfo{};
+    blasRangeInfo.primitiveCount = indexCount / 3;
+    blasRangeInfo.primitiveOffset = 0;
+    blasRangeInfo.firstVertex = 0;
+    blasRangeInfo.transformOffset = 0;
+
+    const VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfos[] = { &blasRangeInfo };
+    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+        vkBuildAccelerationStructuresKHR(_device, VK_NULL_HANDLE, 1, &blasBuildGeometryInfo, buildRangeInfos);
+    });
+
+    return blasResources;
 }
-*/
 
 void Renderer::initVulkanBootstrap() {
     // For debug builds, enable validation layers
