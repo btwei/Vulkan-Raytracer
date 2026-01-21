@@ -62,6 +62,7 @@ public:
     void enqueueImageDestruction(AllocatedImage image);
 
     BlasResources createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount);
+    void enqueueBlasDestruction(BlasResources blasResources);
     
 private:
     bool _isInitialized = false;

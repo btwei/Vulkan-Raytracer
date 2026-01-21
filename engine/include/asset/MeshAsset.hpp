@@ -37,9 +37,7 @@ private:
     std::vector<uint32_t> _indices;
 
     GPUMeshBuffers _meshBuffers;
-
-    VkAccelerationStructureKHR _blas;
-    AllocatedBuffer _scratchBuffer;
+    BlasResources _blasResources;
 };
 
 } // namespace vkrt

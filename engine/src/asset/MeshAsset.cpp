@@ -16,6 +16,7 @@ MeshAsset::~MeshAsset() {
 bool MeshAsset::doLoad() {
     if(!_vertices.empty() && !_indices.empty()) {
         _meshBuffers = _renderer->uploadMesh(_vertices, _indices);
+        _blasResources = _renderer->createBLAS(_meshBuffers, _vertices.size(), _indices.size());
         return true;
     } else {
         return false;
@@ -25,6 +26,7 @@ bool MeshAsset::doLoad() {
 bool MeshAsset::doUnload() {
     _renderer->enqueueBufferDestruction(_meshBuffers.vertexBuffer);
     _renderer->enqueueBufferDestruction(_meshBuffers.indexBuffer);
+    _renderer->enqueueBlasDestruction(_blasResources);
     return true;
 }
 

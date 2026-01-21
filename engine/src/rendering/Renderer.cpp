@@ -279,7 +279,16 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
         vkBuildAccelerationStructuresKHR(_device, VK_NULL_HANDLE, 1, &blasBuildGeometryInfo, buildRangeInfos);
     });
 
+    destroyBuffer(scratchBuffer);
+
     return blasResources;
+}
+
+void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
+    _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
+        vkDestroyAccelerationStructureKHR(_device, blasResources.blas, nullptr);
+        destroyBuffer(blasResources.blasBuffer);
+    });
 }
 
 void Renderer::initVulkanBootstrap() {
