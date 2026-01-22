@@ -19,3 +19,6 @@
 [submodule "external/tinygltf"]
 	path = engine/third_party/tinygltf
 	url = https://github.com/syoyo/tinygltf.git
+[submodule "engine/third_party/volk"]
+	path = engine/third_party/volk
+	url = https://github.com/zeux/volk.git
