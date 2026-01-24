@@ -322,7 +322,10 @@ void Renderer::initVulkanBootstrap() {
 
     // Select a physical device and create a logical device with queues
     std::vector<const char*> requiredExtensions = { VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-                                                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME };
+                                                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+                                                    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+                                                    VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+                                                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME};
 
     VkPhysicalDeviceVulkan12Features features12{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
     features12.bufferDeviceAddress = VK_TRUE;
@@ -334,12 +337,18 @@ void Renderer::initVulkanBootstrap() {
     swapchainFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
     swapchainFeatures.swapchainMaintenance1 = VK_TRUE;
 
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+
     vkb::PhysicalDeviceSelector deviceSelector{instance_ret.value()};
     auto phys_ret = deviceSelector.set_surface(_surface)
                                   .set_required_features_12(features12)
                                   .set_required_features_13(features13)
                                   .add_required_extensions(requiredExtensions)
                                   .add_required_extension_features(swapchainFeatures)
+                                  .add_required_extension_features(accelerationFeatures)
+                                  .add_required_extension_features(rtPipelineFeatures)
                                   .set_minimum_version(1, 3)
                                   .select();
 
