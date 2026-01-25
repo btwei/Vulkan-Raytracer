@@ -22,6 +22,22 @@ option(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE)
 option(TINYGLTF_INSTALL OFF CACHE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/tinygltf)
 
+# Add DearImGUI as a library 
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
+)
+
+add_library(imgui STATIC ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
+target_link_libraries(imgui PRIVATE SDL3::SDL3)
+
 # Add *.cpp to a list of sources
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/src/*.cpp)
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "^third_party/.*$")
@@ -47,4 +63,5 @@ target_link_libraries(engine
     vk-bootstrap::vk-bootstrap
     GPUOpen::VulkanMemoryAllocator
     glm::glm
-    tinygltf)
+    tinygltf
+    imgui)
