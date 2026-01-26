@@ -11,7 +11,9 @@ void EntityManager::init() {
 }
 
 void EntityManager::update() {
-
+    for(std::unique_ptr<Entity>& entity : _entityList) {
+        renderingSystem.update(entity.get());
+    }
 }
 
 Entity* EntityManager::createNewEntity(const std::string entityName) {

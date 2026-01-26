@@ -5,11 +5,12 @@
 #include "CameraComponent.hpp"
 #include "Entity.hpp"
 #include "MeshComponent.hpp"
+#include "RenderingSystem.hpp"
 #include "TransformComponent.hpp"
 #include "Renderer.hpp"
 
 namespace vkrt {
-    
+
 class EntityManager {
 public:
 
@@ -28,6 +29,8 @@ public:
 private:
     Renderer* _renderer;
     AssetManager* _assetManager;
+
+    RenderingSystem renderingSystem;
 
     std::vector<std::unique_ptr<Entity>> _entityList;
 };
