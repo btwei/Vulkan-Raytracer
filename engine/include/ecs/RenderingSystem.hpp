@@ -7,7 +7,7 @@ namespace vkrt {
 
 class RenderingSystem : public System {
 public:
-    virtual void update(Entity* entity) override;
+    virtual void update(std::vector<std::unique_ptr<Entity>>& entityList) override;
 };
 
 } // namespace vkrt

@@ -7,7 +7,7 @@ namespace vkrt {
 
 class System {
 public:
-    virtual void update(Entity* entity) = 0;
+    virtual void update(std::vector<Entity*>& entity) = 0;
 };
 
 } // namespace vkrt
