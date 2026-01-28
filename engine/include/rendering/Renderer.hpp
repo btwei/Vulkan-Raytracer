@@ -64,6 +64,9 @@ public:
     BlasResources createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount);
     void enqueueBlasDestruction(BlasResources blasResources);
     
+    //void buildTLAS(std::span<BlasInstance>& instances);
+    //void updateTLAS(std::span<BlasInstance>& instances);
+
 private:
     bool _isInitialized = false;
     bool _shouldResize = false;

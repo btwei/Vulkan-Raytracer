@@ -281,6 +281,10 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
 
     destroyBuffer(scratchBuffer);
 
+    VkAccelerationStructureDeviceAddressInfoKHR blasAddressInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
+    blasAddressInfo.accelerationStructure = blasResources.blas;
+    blasResources.blasAddress = vkGetAccelerationStructureDeviceAddressKHR(_device, &blasAddressInfo);
+
     return blasResources;
 }
 

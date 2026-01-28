@@ -65,6 +65,12 @@ struct GPUMeshBuffers {
 struct BlasResources {
     AllocatedBuffer blasBuffer;
     VkAccelerationStructureKHR blas;
+    VkDeviceAddress blasAddress;
+};
+
+struct BlasInstance {
+    VkTransformMatrixKHR transform;
+    glm::mat4 transform;
 };
 
 }
