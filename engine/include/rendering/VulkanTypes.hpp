@@ -69,8 +69,8 @@ struct BlasResources {
 };
 
 struct BlasInstance {
+    VkDeviceAddress blasAddress;
     VkTransformMatrixKHR transform;
-    glm::mat4 transform;
 };
 
 }
