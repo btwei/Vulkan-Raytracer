@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.28)
 
 project(VkrtEngine VERSION 1.0.0 LANGUAGES CXX)
 
+# Add Vulkan to be used by SDL3
+find_package(Vulkan REQUIRED)
+
 # Add Volk as a subdirectory (requires Vulkan SDK to be set in environment variables)
 if (WIN32)
    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
@@ -52,20 +55,22 @@ list(FILTER ENGINE_SOURCES EXCLUDE REGEX "^third_party/.*$")
 # Add engine directory as a library
 add_library(engine STATIC ${ENGINE_SOURCES})
 
-# NOTE: In the future, I'd consider splitting the engine/ folder into include/ and src/
 target_include_directories(engine 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/asset
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rendering
     ${CMAKE_CURRENT_SOURCE_DIR}/include/ecs
-    ${Vulkan_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/volk
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vk-bootstrap/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/VulkanMemoryAllocator/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/glm/glm
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/tinygltf)
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/tinygltf
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm
+)
 
 target_link_libraries(engine 
-    PRIVATE volk
+    PRIVATE Vulkan::Vulkan
+    volk::volk
     SDL3::SDL3 
     vk-bootstrap::vk-bootstrap
     GPUOpen::VulkanMemoryAllocator

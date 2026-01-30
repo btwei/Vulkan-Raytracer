@@ -296,6 +296,9 @@ void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
 }
 
 void Renderer::initVulkanBootstrap() {
+    // Initialize Volk; Fails if Vulkan loader cannot be located
+    VK_REQUIRE_SUCCESS(volkInitialize());
+
     // For debug builds, enable validation layers
 #ifndef NDEBUG
     bool bUseValidationLayers = true;
@@ -320,6 +323,9 @@ void Renderer::initVulkanBootstrap() {
     if(!instance_ret) throw std::runtime_error("Failed to create Vulkan instance. Error: " + instance_ret.error().message());
     _instance = instance_ret.value().instance;
     _debugMessenger = instance_ret.value().debug_messenger;
+
+    // Pass instance to Volk
+    volkLoadInstance(_instance);
 
     // Create a Vulkan Surface via SDL3, which handles platform differences
     _surface = _window->createSurface(_instance);
@@ -363,6 +369,9 @@ void Renderer::initVulkanBootstrap() {
     auto device_ret = deviceBuilder.build();
     if(!device_ret) throw std::runtime_error("Failed to create Vulkan device!");
     _device = device_ret.value().device;
+
+    // Load device for Volk to reduce dispatch overhead
+    volkLoadDevice(_device);
 
     _graphicsQueue = device_ret.value().get_queue(vkb::QueueType::graphics).value();
     _graphicsQueueFamilyIndex = device_ret.value().get_queue_index(vkb::QueueType::graphics).value();

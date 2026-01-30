@@ -4,8 +4,8 @@
 #include <functional>
 #include <queue>
 
+#include <volk.h>
 #include <VkBootstrap.h>
-#include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
 #include "SceneManager.hpp"

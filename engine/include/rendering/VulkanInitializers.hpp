@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace vkrt::init {
 
