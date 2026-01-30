@@ -2,8 +2,15 @@ cmake_minimum_required(VERSION 3.28)
 
 project(VkrtEngine VERSION 1.0.0 LANGUAGES CXX)
 
-# Find Vulkan
-find_package(Vulkan)
+# Add Volk as a subdirectory (requires Vulkan SDK to be set in environment variables)
+if (WIN32)
+   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+elseif(APPLE)
+   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
+elseif(UNIX)
+    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WAYLAND_KHR)
+endif()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/volk)
 
 # Add SDL as a subdirectory
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL EXCLUDE_FROM_ALL)
@@ -58,7 +65,7 @@ target_include_directories(engine
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/tinygltf)
 
 target_link_libraries(engine 
-    PRIVATE Vulkan::Vulkan
+    PRIVATE volk
     SDL3::SDL3 
     vk-bootstrap::vk-bootstrap
     GPUOpen::VulkanMemoryAllocator
