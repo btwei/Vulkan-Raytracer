@@ -116,6 +116,8 @@ private:
 
     void immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function);
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+    
 };
 
 } // namespace vkrt

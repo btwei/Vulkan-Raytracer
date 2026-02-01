@@ -46,7 +46,7 @@ set(IMGUI_SOURCES
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
-target_link_libraries(imgui PRIVATE SDL3::SDL3)
+target_link_libraries(imgui PRIVATE Vulkan::Vulkan SDL3::SDL3)
 
 # Add *.cpp to a list of sources
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/engine/src/*.cpp)
@@ -54,6 +54,9 @@ list(FILTER ENGINE_SOURCES EXCLUDE REGEX "^third_party/.*$")
 
 # Add engine directory as a library
 add_library(engine STATIC ${ENGINE_SOURCES})
+
+# Disable minmax macros from <windows.h> when compiling on Windows
+target_compile_definitions(engine PUBLIC NOMINMAX)
 
 target_include_directories(engine 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include

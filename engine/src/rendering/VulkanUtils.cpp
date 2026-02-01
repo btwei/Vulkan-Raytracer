@@ -1,5 +1,7 @@
 #include "VulkanUtils.hpp"
 
+#include <algorithm>
+
 namespace vkrt::utils
 {
     

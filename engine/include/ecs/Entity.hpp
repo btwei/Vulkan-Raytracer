@@ -1,6 +1,7 @@
 #ifndef VKRT_ENTITY_HPP
 #define VKRT_ENTITY_HPP
 
+#include <string>
 #include <typeindex>
 #include <memory>
 #include <vector>
