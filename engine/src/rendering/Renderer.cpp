@@ -114,7 +114,7 @@ GPUMeshBuffers Renderer::uploadMesh(const std::span<Vertex>& vertices, const std
     VkBufferDeviceAddressInfo indexBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = meshBuffers.indexBuffer.buffer };
     meshBuffers.indexBufferAddress = vkGetBufferDeviceAddress(_device, &indexBufferAddressInfo);
 
-    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+    immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf) {
         VkBufferCopy vertexRegion{};
         vertexRegion.size = vertices.size();
         vkCmdCopyBuffer(cmdBuf, stagingBuffer.buffer, meshBuffers.vertexBuffer.buffer, 1, &vertexRegion);
@@ -178,7 +178,7 @@ AllocatedImage Renderer::uploadImage(void* data, VkExtent3D extent, VkFormat for
     if(mipmapped) mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
     AllocatedImage newImage = createImage(extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
-    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+    immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf) {
         utils::defaultImageTransition(cmdBuf, newImage.image,
                                       VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       0, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -275,7 +275,7 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
     blasRangeInfo.transformOffset = 0;
 
     const VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfos[] = { &blasRangeInfo };
-    immediateGraphicsQueueSubmit([&](VkCommandBuffer cmdBuf) {
+    immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf) {
         vkBuildAccelerationStructuresKHR(_device, VK_NULL_HANDLE, 1, &blasBuildGeometryInfo, buildRangeInfos);
     });
 
@@ -293,6 +293,18 @@ void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
         vkDestroyAccelerationStructureKHR(_device, blasResources.blas, nullptr);
         destroyBuffer(blasResources.blasBuffer);
     });
+}
+
+void Renderer::setTLASBuild(std::vector<BlasInstance>&& instances) {
+    _tlasBlasInstances = instances;
+    _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
+    _tlasUseUpdateInsteadOfRebuild = false;
+}
+
+void Renderer::setTLASUpdate(std::vector<BlasInstance>&& instances) {
+    _tlasBlasInstances = instances;
+    _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
+    _tlasUseUpdateInsteadOfRebuild = true;
 }
 
 void Renderer::initVulkanBootstrap() {
@@ -529,7 +541,7 @@ void Renderer::initVMA() {
     vmaCreateAllocator(&allocatorCreateInfo, &_allocator);
 }
 
-void Renderer::immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {
+void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function) {
     VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &_immediateFence));
     VK_REQUIRE_SUCCESS(vkResetCommandBuffer(_immediateCommandBuffer, 0));
 

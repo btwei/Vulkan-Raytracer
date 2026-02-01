@@ -37,6 +37,10 @@ struct FrameData {
     VkSemaphore _acquireToRenderSemaphore;
     VkSemaphore _renderToPresentSemaphore;
 
+    VkAccelerationStructureKHR tlas;
+    AllocatedBuffer tlasBuffer;
+    AllocatedBuffer scratchBuffer;
+
     DeletionQueue _deletionQueue;
 };
 
@@ -64,8 +68,8 @@ public:
     BlasResources createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount);
     void enqueueBlasDestruction(BlasResources blasResources);
     
-    //void buildTLAS(std::span<BlasInstance>& instances);
-    //void updateTLAS(std::span<BlasInstance>& instances);
+    void setTLASBuild(std::vector<BlasInstance>&& instances);
+    void setTLASUpdate(std::vector<BlasInstance>&& instances);
 
 private:
     bool _isInitialized = false;
@@ -97,6 +101,10 @@ private:
 
     FrameData _frameData[NUM_FRAMES_IN_FLIGHT];
 
+    std::vector<BlasInstance> _tlasBlasInstances;
+    int _tlasFramesToUpdate = 0;
+    bool _tlasUseUpdateInsteadOfRebuild = false;
+
     VmaAllocator _allocator;
 
     void initVulkanBootstrap();
@@ -106,6 +114,7 @@ private:
     void initSyncResources();
     void initVMA();
 
+    void immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function);
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 };
 
