@@ -45,7 +45,7 @@ bool TextureAsset::doLoad() {
         unsigned char * stbi_data = stbi_load(_filepath.c_str(), &x, &y, &numChannels, 4);
         if (!stbi_data) return false; // Failed to create _data via stb_image
 
-        _extent = VkExtent3D{static_cast<uint>(x), static_cast<uint>(y), 1};
+        _extent = VkExtent3D{static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
         _texture = _renderer->uploadImage(stbi_data, _extent, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
         stbi_image_free(stbi_data);

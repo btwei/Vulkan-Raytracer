@@ -72,8 +72,8 @@ target_include_directories(engine
 )
 
 target_link_libraries(engine 
-    PRIVATE Vulkan::Vulkan
-    volk::volk
+    PUBLIC Vulkan::Vulkan
+    PRIVATE volk::volk
     SDL3::SDL3 
     vk-bootstrap::vk-bootstrap
     GPUOpen::VulkanMemoryAllocator
