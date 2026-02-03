@@ -80,8 +80,9 @@ void Renderer::renderScene() {
     std::vector<VkCommandBuffer> cmdBufs = {cmdBuf};
     std::vector<VkSemaphore> signalSemaphores = {getCurrentFrame()._renderToPresentSemaphore};
     std::vector<VkSemaphore> waitSemaphores = {getCurrentFrame()._acquireToRenderSemaphore};
+    std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 
-    VkSubmitInfo submitInfo = vkrt::init::defaultSubmitInfo(cmdBufs, signalSemaphores, waitSemaphores);
+    VkSubmitInfo submitInfo = vkrt::init::defaultSubmitInfo(cmdBufs, signalSemaphores, waitSemaphores, waitStages);
     VK_REQUIRE_SUCCESS(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
 
     VkPresentInfoKHR presentInfo{ .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
