@@ -18,14 +18,16 @@ static const int NUM_FRAMES_IN_FLIGHT = 2;
 
 struct DeletionQueue {
 private:
-    std::queue<std::function<void()>> _deletionQueue;
+    std::queue<std::function<bool()>> _deletionQueue;
 public:
     void flushQueue() {
+        std::queue<std::function<bool()>> _carryOverDeletionQueue;
         for (; !_deletionQueue.empty(); _deletionQueue.pop()) {
-            (_deletionQueue.front())();
+            if(!(_deletionQueue.front())()) _carryOverDeletionQueue.push(_deletionQueue.front());
         }
+        _deletionQueue = std::move(_carryOverDeletionQueue);
     }
-    void pushFunction(std::function<void()> function) {_deletionQueue.push(function); }
+    void pushFunction(std::function<bool()> function) { _deletionQueue.push(function); }
 };
 
 struct FrameData {
@@ -33,7 +35,7 @@ struct FrameData {
     VkCommandBuffer _mainCommandBuffer;
 
     VkFence _renderFence;
-    VkFence _swapchainFence;
+    VkFence _presentFence;
     VkSemaphore _acquireToRenderSemaphore;
     VkSemaphore _renderToPresentSemaphore;
 
@@ -114,6 +116,7 @@ private:
     void initSyncResources();
     void initVMA();
 
+    FrameData& getCurrentFrame() { return _frameData[_frameCount % NUM_FRAMES_IN_FLIGHT]; }
     void immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function);
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 

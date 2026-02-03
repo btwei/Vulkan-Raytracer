@@ -26,12 +26,84 @@ void Renderer::init() {
 }
 
 void Renderer::renderScene() {
-    // Update BLAS
+    VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &getCurrentFrame()._presentFence, VK_TRUE, 1'000'000'000));
 
-    // Update TLAS
+    getCurrentFrame()._deletionQueue.flushQueue();
 
-    // Render with 1 Sample per Pixel
+    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._presentFence));
 
+    // Acquire swapchain image
+    uint32_t swapchainImageIndex;
+    VkResult imageAcquireResult = vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, getCurrentFrame()._acquireToRenderSemaphore, VK_NULL_HANDLE, &swapchainImageIndex);
+    if(imageAcquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        _shouldResize = true;
+        return;
+    }
+
+    // Do TLAS rebuilds and updates
+
+    // Do rendering
+    VkCommandBuffer cmdBuf = getCurrentFrame()._mainCommandBuffer;
+
+    VK_REQUIRE_SUCCESS(vkResetCommandBuffer(cmdBuf, 0));
+
+    VkCommandBufferBeginInfo beginInfo = vkrt::init::defaultCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(cmdBuf, &beginInfo));
+
+        vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
+                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                            1);
+
+        VkClearColorValue clearColor{1.0, 0.0, 0.0, 1.0}; 
+
+        VkImageSubresourceRange imageRange{
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        };
+
+        // Temporary workload for debugging and validating working main render loop
+        vkCmdClearColorImage(cmdBuf, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageRange);
+
+        vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
+                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                            VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+                                            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                            1);
+
+    VK_REQUIRE_SUCCESS(vkEndCommandBuffer(cmdBuf));
+
+    std::vector<VkCommandBuffer> cmdBufs = {cmdBuf};
+    std::vector<VkSemaphore> signalSemaphores = {getCurrentFrame()._renderToPresentSemaphore};
+    std::vector<VkSemaphore> waitSemaphores = {getCurrentFrame()._acquireToRenderSemaphore};
+
+    VkSubmitInfo submitInfo = vkrt::init::defaultSubmitInfo(cmdBufs, signalSemaphores, waitSemaphores);
+    VK_REQUIRE_SUCCESS(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+
+    VkPresentInfoKHR presentInfo{ .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    presentInfo.pSwapchains = &_swapchain;
+    presentInfo.swapchainCount = 1;
+
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &getCurrentFrame()._renderToPresentSemaphore;
+
+    presentInfo.pImageIndices = &swapchainImageIndex;
+
+    // Use VkSwapchainPresentFence to track whether the current swapchain image is done being presented
+    VkSwapchainPresentFenceInfoKHR presentFenceInfo{ .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR };
+    presentInfo.pNext = &presentFenceInfo;
+    presentFenceInfo.swapchainCount = 1;
+    presentFenceInfo.pFences = &getCurrentFrame()._presentFence;
+
+    // Submit for presentation
+    VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
+    if(presentResult == VK_ERROR_OUT_OF_DATE_KHR) _shouldResize = true;
+
+    _frameCount++;
 }
 
 void Renderer::cleanup() {
@@ -46,7 +118,7 @@ void Renderer::cleanup() {
 
             vkDestroyCommandPool(_device, data._commandPool, nullptr);
             vkDestroyFence(_device, data._renderFence, nullptr);
-            vkDestroyFence(_device, data._swapchainFence, nullptr);
+            vkDestroyFence(_device, data._presentFence, nullptr);
             vkDestroySemaphore(_device, data._acquireToRenderSemaphore, nullptr);
             vkDestroySemaphore(_device, data._renderToPresentSemaphore, nullptr);
         }
@@ -138,6 +210,8 @@ void Renderer::destroyBuffer(AllocatedBuffer buffer) {
 void Renderer::enqueueBufferDestruction(AllocatedBuffer buffer) {
     _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
         destroyBuffer(buffer);
+
+        return true;
     });
 }
 
@@ -218,6 +292,8 @@ void Renderer::destroyImage(AllocatedImage image) {
 void Renderer::enqueueImageDestruction(AllocatedImage image) {
     _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
         destroyImage(image);
+
+        return true;
     });
 }
 
@@ -293,6 +369,8 @@ void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
     _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]._deletionQueue.pushFunction([=, this](){
         vkDestroyAccelerationStructureKHR(_device, blasResources.blas, nullptr);
         destroyBuffer(blasResources.blasBuffer);
+
+        return true;
     });
 }
 
@@ -527,7 +605,7 @@ void Renderer::initSyncResources() {
 
         VkFenceCreateInfo fenceInfo = init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
         VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._renderFence));
-        VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._swapchainFence));
+        VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._presentFence));
     }
 }
 
