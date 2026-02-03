@@ -617,7 +617,11 @@ void Renderer::initVMA() {
     allocatorCreateInfo.instance = _instance;
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
-    vmaCreateAllocator(&allocatorCreateInfo, &_allocator);
+    VmaVulkanFunctions vulkanFunctions;
+    VK_REQUIRE_SUCCESS(vmaImportVulkanFunctionsFromVolk(&allocatorCreateInfo, &vulkanFunctions));
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+    VK_REQUIRE_SUCCESS(vmaCreateAllocator(&allocatorCreateInfo, &_allocator));
 }
 
 void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function) {
