@@ -21,10 +21,10 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
 
     // Load model, return early on failure
     if(filepath.extension() == ".gltf") {
-        bool res = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+        bool res = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
         if(!res) return result;
     } else if(filepath.extension() == ".glb") {
-        bool res = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
+        bool res = loader.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
         if(!res) return result;
     } else {
         return result;

@@ -42,7 +42,8 @@ bool TextureAsset::doLoad() {
 
     // load from filepath
     } else if(!_filepath.empty()) {
-        unsigned char * stbi_data = stbi_load(_filepath.c_str(), &x, &y, &numChannels, 4);
+        std::string filepathAsString = _filepath.string();
+        unsigned char * stbi_data = stbi_load(filepathAsString.c_str(), &x, &y, &numChannels, 4);
         if (!stbi_data) return false; // Failed to create _data via stb_image
 
         _extent = VkExtent3D{static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
