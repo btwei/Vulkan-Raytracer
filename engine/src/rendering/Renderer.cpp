@@ -26,11 +26,11 @@ void Renderer::init() {
 }
 
 void Renderer::renderScene() {
-    VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &getCurrentFrame()._presentFence, VK_TRUE, 1'000'000'000));
+    VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &getCurrentFrame()._renderFence, VK_TRUE, 1'000'000'000));
 
     getCurrentFrame()._deletionQueue.flushQueue();
 
-    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._presentFence));
+    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._renderFence));
 
     // Acquire swapchain image
     uint32_t swapchainImageIndex;
@@ -78,19 +78,19 @@ void Renderer::renderScene() {
     VK_REQUIRE_SUCCESS(vkEndCommandBuffer(cmdBuf));
 
     std::vector<VkCommandBuffer> cmdBufs = {cmdBuf};
-    std::vector<VkSemaphore> signalSemaphores = {getCurrentFrame()._renderToPresentSemaphore};
+    std::vector<VkSemaphore> signalSemaphores = {_swapchainRenderToPresentSemaphores[swapchainImageIndex]};
     std::vector<VkSemaphore> waitSemaphores = {getCurrentFrame()._acquireToRenderSemaphore};
     std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 
     VkSubmitInfo submitInfo = vkrt::init::defaultSubmitInfo(cmdBufs, signalSemaphores, waitSemaphores, waitStages);
-    VK_REQUIRE_SUCCESS(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_REQUIRE_SUCCESS(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, getCurrentFrame()._renderFence));
 
     VkPresentInfoKHR presentInfo{ .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     presentInfo.pSwapchains = &_swapchain;
     presentInfo.swapchainCount = 1;
 
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &getCurrentFrame()._renderToPresentSemaphore;
+    presentInfo.pWaitSemaphores = &_swapchainRenderToPresentSemaphores[swapchainImageIndex];
 
     presentInfo.pImageIndices = &swapchainImageIndex;
 
@@ -98,7 +98,25 @@ void Renderer::renderScene() {
     VkSwapchainPresentFenceInfoKHR presentFenceInfo{ .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR };
     presentInfo.pNext = &presentFenceInfo;
     presentFenceInfo.swapchainCount = 1;
-    presentFenceInfo.pFences = &getCurrentFrame()._presentFence;
+
+    // Select a free fence; we don't want to block
+    VkFence* pPresentFence = nullptr;
+    for(VkFence& fence : _swapchainPresentFences) {
+        if(vkGetFenceStatus(_device, fence) == VK_SUCCESS) {
+            vkResetFences(_device, 1, &fence);
+            pPresentFence = &fence;
+            _pLatestPresentFence = &fence;
+            break;
+        }
+    }
+    if(pPresentFence == nullptr) {
+        VkFence& newFence = _swapchainPresentFences.emplace_back();
+        VkFenceCreateInfo fenceInfo = init::defaultFenceInfo();
+        vkCreateFence(_device, &fenceInfo, nullptr, &newFence);
+        pPresentFence = &newFence;
+        _pLatestPresentFence = &newFence;
+    }
+    presentFenceInfo.pFences = pPresentFence;
 
     // Submit for presentation
     VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
@@ -113,15 +131,18 @@ void Renderer::cleanup() {
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
 
+        // Cleanup dynamically created present fences
+        for(VkFence& fence : _swapchainPresentFences) {
+            vkDestroyFence(_device, fence, nullptr);
+        }
+
         // Cleanup frameData
         for(auto& data : _frameData) {
             _frameData->_deletionQueue.flushQueue();
 
             vkDestroyCommandPool(_device, data._commandPool, nullptr);
             vkDestroyFence(_device, data._renderFence, nullptr);
-            vkDestroyFence(_device, data._presentFence, nullptr);
             vkDestroySemaphore(_device, data._acquireToRenderSemaphore, nullptr);
-            vkDestroySemaphore(_device, data._renderToPresentSemaphore, nullptr);
         }
 
         vkDestroyCommandPool(_device, _immediateCommandPool, nullptr);
@@ -129,9 +150,10 @@ void Renderer::cleanup() {
 
         vmaDestroyAllocator(_allocator);
 
-        // Cleanup current swapchain
-        for(auto& imageView : _swapchainImageViews) {
-            vkDestroyImageView(_device, imageView, nullptr);
+        // Cleanup current swapchain resources
+        for(int i=0; i < _swapchainImages.size(); i++) {
+            vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
+            vkDestroySemaphore(_device, _swapchainRenderToPresentSemaphores[i], nullptr);
         }
         vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
@@ -563,13 +585,39 @@ void Renderer::createSwapchainResources(VkSwapchainKHR oldSwapchain /* = VK_NULL
         if(vkCreateImageView(_device, &imageViewInfo, nullptr, &imageView) != VK_SUCCESS) throw std::runtime_error("Failed to create Vulkan swapchain image view!");
         _swapchainImageViews.push_back(imageView);
     }
+
+    // Create semaphores to guard the swapchain images
+    // - the vector containing them must be the same size as the swapchain image count
+    _swapchainRenderToPresentSemaphores.resize(_swapchainImages.size());
+    for(int i = 0; i < _swapchainImages.size(); i++) {
+        VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
+        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_swapchainRenderToPresentSemaphores[i]));
+    }
 }
 
 void Renderer::resizeSwapchainResources() {
     // The key to smooth resizing is to not call vkWaitDevice and instead push these to be destroyed later
 
     // So, push resources into a destruction queue
-    // @todo destruction queue
+    /*
+    getCurrentFrame()._deletionQueue.pushFunction([currentFence = getCurrentFrame()._presentFence]() {
+        
+        if(vkGetFenceStatus(_device, currentFence) == VK_SUCCESS) {
+
+            for(int i=0; i<; ) {
+                vkDestroyImageView(_device, );
+            }
+
+            vkDestroyFence(_device, , nullptr);
+
+            return true;
+        }
+
+        return false;
+    });
+    */
+
+    // Then update resources with new 
 
     // And create new swapchain resources -- that straight up overwrite the old values
     createSwapchainResources();
@@ -602,11 +650,9 @@ void Renderer::initSyncResources() {
     for(auto& data : _frameData) {
         VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
         VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._acquireToRenderSemaphore));
-        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &data._renderToPresentSemaphore));
 
         VkFenceCreateInfo fenceInfo = init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
         VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._renderFence));
-        VK_REQUIRE_SUCCESS(vkCreateFence(_device, &fenceInfo, nullptr, &data._presentFence));
     }
 }
 
@@ -641,6 +687,12 @@ void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommand
     vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _immediateFence);
 
     VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &_immediateFence, true, 9'999'999'999));
+}
+
+void Renderer::handleResize() {
+    // Destroy 
+
+    _shouldResize = false;
 }
 
 } //namespace vkrt

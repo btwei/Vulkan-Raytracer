@@ -35,9 +35,7 @@ struct FrameData {
     VkCommandBuffer _mainCommandBuffer;
 
     VkFence _renderFence;
-    VkFence _presentFence;
     VkSemaphore _acquireToRenderSemaphore;
-    VkSemaphore _renderToPresentSemaphore;
 
     VkAccelerationStructureKHR tlas;
     AllocatedBuffer tlasBuffer;
@@ -96,6 +94,9 @@ private:
     VkSwapchainKHR _swapchain;
     std::vector<VkImage> _swapchainImages;
     std::vector<VkImageView> _swapchainImageViews;
+    std::vector<VkSemaphore> _swapchainRenderToPresentSemaphores;
+    VkFence* _pLatestPresentFence;
+    std::vector<VkFence> _swapchainPresentFences;
 
     VkCommandPool _immediateCommandPool;
     VkCommandBuffer _immediateCommandBuffer;
@@ -117,9 +118,11 @@ private:
     void initVMA();
 
     FrameData& getCurrentFrame() { return _frameData[_frameCount % NUM_FRAMES_IN_FLIGHT]; }
+    FrameData& getPreviousFrame() { return _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]; }
+    FrameData& getNextFrame() { return _frameData[(_frameCount + 1) % NUM_FRAMES_IN_FLIGHT]; }
     void immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function);
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
-
+    void handleResize();
     
 };
 
