@@ -26,6 +26,15 @@ void Renderer::init() {
 }
 
 void Renderer::renderScene() {
+    // Get resize request from OS
+    if(_window->getWasResized()) _shouldResize = true;
+
+    // Handle shouldResize
+    if(_shouldResize) {
+        resizeSwapchainResources();
+        _shouldResize = false;
+    }
+
     VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &getCurrentFrame()._renderFence, VK_TRUE, 1'000'000'000));
 
     getCurrentFrame()._deletionQueue.flushQueue();
@@ -599,28 +608,35 @@ void Renderer::resizeSwapchainResources() {
     // The key to smooth resizing is to not call vkWaitDevice and instead push these to be destroyed later
 
     // So, push resources into a destruction queue
-    /*
-    getCurrentFrame()._deletionQueue.pushFunction([currentFence = getCurrentFrame()._presentFence]() {
+    getCurrentFrame()._deletionQueue.pushFunction([=,
+                                                   _device = _device,
+                                                   _pLatestPresentFence = _pLatestPresentFence,
+                                                   imageViews = _swapchainImageViews,
+                                                   semaphores = _swapchainRenderToPresentSemaphores,
+                                                   _swapchain = _swapchain]() {
         
-        if(vkGetFenceStatus(_device, currentFence) == VK_SUCCESS) {
-
-            for(int i=0; i<; ) {
-                vkDestroyImageView(_device, );
+        // Check the present fence associated with the swapchain resource
+        if(vkGetFenceStatus(_device, *_pLatestPresentFence) == VK_SUCCESS) {
+            // If true, cleanup all associated resources
+            for(int i=0; i<imageViews.size(); i++) {
+                vkDestroyImageView(_device, imageViews[i], nullptr);
+                vkDestroySemaphore(_device, semaphores[i], nullptr);
             }
+            vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
-            vkDestroyFence(_device, , nullptr);
-
+            vkDestroyFence(_device, *_pLatestPresentFence, nullptr);
             return true;
         }
-
+        // Otherwise, return false
         return false;
     });
-    */
 
-    // Then update resources with new 
+    // Then replace the present fence that we took out
+    VkFenceCreateInfo fenceInfo = vkrt::init::defaultFenceInfo();
+    vkCreateFence(_device, &fenceInfo, nullptr, _pLatestPresentFence);
 
     // And create new swapchain resources -- that straight up overwrite the old values
-    createSwapchainResources();
+    createSwapchainResources(_swapchain);
 }
 
 void Renderer::initCommandResources() {
