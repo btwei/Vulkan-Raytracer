@@ -23,23 +23,15 @@ void Renderer::init() {
     initCommandResources();
     initSyncResources();
     initVMA();
+    initTLAS();
 }
 
-void Renderer::renderScene() {
-    // Get resize request from OS
-    if(_window->getWasResized()) _shouldResize = true;
-
-    // Handle shouldResize
-    if(_shouldResize) {
-        resizeSwapchainResources();
-        _shouldResize = false;
-    }
+void Renderer::update() {
+    handleResize();
 
     VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &getCurrentFrame()._renderFence, VK_TRUE, 1'000'000'000));
 
     getCurrentFrame()._deletionQueue.flushQueue();
-
-    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._renderFence));
 
     // Acquire swapchain image
     uint32_t swapchainImageIndex;
@@ -47,9 +39,13 @@ void Renderer::renderScene() {
     if(imageAcquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         _shouldResize = true;
         return;
+    } else if(imageAcquireResult != VK_SUCCESS && imageAcquireResult != VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error("Failed to acquire swapchain image!");
     }
 
-    // Do TLAS rebuilds and updates
+    VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._renderFence));
+
+    handleTLASUpdate();
 
     // Do rendering
     VkCommandBuffer cmdBuf = getCurrentFrame()._mainCommandBuffer;
@@ -607,9 +603,8 @@ void Renderer::createSwapchainResources(VkSwapchainKHR oldSwapchain /* = VK_NULL
 
 void Renderer::resizeSwapchainResources() {
     // The key to smooth resizing is to not call vkWaitDevice and instead push these to be destroyed later
-
+    // If not the first frame, push resources into a destruction queue
     if(_pLatestPresentFence != nullptr) {
-        // So, push resources into a destruction queue
         getCurrentFrame()._deletionQueue.pushFunction([=,
                                                        _device = _device,
                                                        latestPresentFence = *_pLatestPresentFence,
@@ -636,6 +631,16 @@ void Renderer::resizeSwapchainResources() {
         // Then replace the present fence that we took out
         VkFenceCreateInfo fenceInfo = vkrt::init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
         vkCreateFence(_device, &fenceInfo, nullptr, _pLatestPresentFence);
+
+    } else {
+        // A recreation was requested before the first frame; Destroy resources immediately
+        for(int i = 0; i<_swapchainImageViews.size(); i++) {
+            vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
+            vkDestroySemaphore(_device, _swapchainRenderToPresentSemaphores[i], nullptr);
+        }
+        vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+
+        vkDestroyFence(_device, *_pLatestPresentFence, nullptr);
     }
 
     // And create new swapchain resources -- that straight up overwrite the old values
@@ -690,6 +695,40 @@ void Renderer::initVMA() {
     VK_REQUIRE_SUCCESS(vmaCreateAllocator(&allocatorCreateInfo, &_allocator));
 }
 
+void Renderer::initTLAS() {
+    // Set the TLAS to build by default an empty TLAS on the first frame
+    // If setTLASBuild is called again before running, it instead will be displayed on the first frame
+    setTLASBuild({});
+}
+
+void Renderer::handleResize() {
+    // Get resize request from OS
+    if(_window->getWasResized()) _shouldResize = true;
+
+    // Process resize if necessary
+    if(_shouldResize) {
+        resizeSwapchainResources();
+        _shouldResize = false;
+    }
+}
+
+void Renderer::handleTLASUpdate() {
+    if(_tlasFramesToUpdate > 0) {
+        // Update the TLAS resources attached to this frame in flight
+        if(_tlasUseUpdateInsteadOfRebuild) {
+            // Do a lighter weight update
+
+            
+        } else {
+            // Do a full rebuild
+
+
+        }
+
+        _tlasFramesToUpdate -= 1;
+    } 
+}
+
 void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function) {
     VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &_immediateFence));
     VK_REQUIRE_SUCCESS(vkResetCommandBuffer(_immediateCommandBuffer, 0));
@@ -706,12 +745,6 @@ void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommand
     vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _immediateFence);
 
     VK_REQUIRE_SUCCESS(vkWaitForFences(_device, 1, &_immediateFence, true, 9'999'999'999));
-}
-
-void Renderer::handleResize() {
-    // Destroy 
-
-    _shouldResize = false;
 }
 
 } //namespace vkrt

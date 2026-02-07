@@ -33,7 +33,7 @@ void Engine::run() {
 
         _entityManager->update();
 
-        _renderer->renderScene();
+        _renderer->update();
     }
 }
 

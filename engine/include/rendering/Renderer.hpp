@@ -50,7 +50,7 @@ public:
     ~Renderer();
 
     void init();
-    void renderScene();
+    void update();
     void cleanup();
 
     uint64_t getFrameNumber() { return _frameCount; }
@@ -116,14 +116,16 @@ private:
     void initCommandResources();
     void initSyncResources();
     void initVMA();
+    void initTLAS();
+
+    void handleResize();
+    void handleTLASUpdate();
 
     FrameData& getCurrentFrame() { return _frameData[_frameCount % NUM_FRAMES_IN_FLIGHT]; }
     FrameData& getPreviousFrame() { return _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]; }
     FrameData& getNextFrame() { return _frameData[(_frameCount + 1) % NUM_FRAMES_IN_FLIGHT]; }
     void immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function);
     void immediateGraphicsQueueSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
-    void handleResize();
-    
 };
 
 } // namespace vkrt
