@@ -146,6 +146,9 @@ void Renderer::cleanup() {
         for(auto& data : _frameData) {
             _frameData->_deletionQueue.flushQueue();
 
+            vkDestroyAccelerationStructureKHR(_device, data.tlas, nullptr);
+            destroyBuffer(data.tlasBuffer);
+
             vkDestroyCommandPool(_device, data._commandPool, nullptr);
             vkDestroyFence(_device, data._renderFence, nullptr);
             vkDestroySemaphore(_device, data._acquireToRenderSemaphore, nullptr);
@@ -382,7 +385,7 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
 
     const VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfos[] = { &blasRangeInfo };
     immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf) {
-        vkBuildAccelerationStructuresKHR(_device, VK_NULL_HANDLE, 1, &blasBuildGeometryInfo, buildRangeInfos);
+        vkCmdBuildAccelerationStructuresKHR(cmdBuf, 1, &blasBuildGeometryInfo, buildRangeInfos);
     });
 
     destroyBuffer(scratchBuffer);
@@ -404,13 +407,13 @@ void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
 }
 
 void Renderer::setTLASBuild(std::vector<BlasInstance>&& instances) {
-    _tlasBlasInstances = instances;
+    _tlasInstanceList = instances;
     _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
     _tlasUseUpdateInsteadOfRebuild = false;
 }
 
 void Renderer::setTLASUpdate(std::vector<BlasInstance>&& instances) {
-    _tlasBlasInstances = instances;
+    _tlasInstanceList = instances;
     _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
     _tlasUseUpdateInsteadOfRebuild = true;
 }
@@ -713,20 +716,100 @@ void Renderer::handleResize() {
 }
 
 void Renderer::handleTLASUpdate() {
+    // Update the TLAS resources attached to this frame in flight
     if(_tlasFramesToUpdate > 0) {
-        // Update the TLAS resources attached to this frame in flight
-        if(_tlasUseUpdateInsteadOfRebuild) {
-            // Do a lighter weight update
-
-            
-        } else {
-            // Do a full rebuild
-
-
+        // Destroy old resources
+        if(getCurrentFrame().tlas != VK_NULL_HANDLE) {
+            vkDestroyAccelerationStructureKHR(_device, getCurrentFrame().tlas, nullptr);
+            destroyBuffer(getCurrentFrame().tlasBuffer);
         }
 
+        // Read the instance list into VkAccelerationStructureInstanceKHR structs
+        std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
+        tlasInstances.reserve(_tlasInstanceList.size());
+
+        for(const BlasInstance& instance : _tlasInstanceList) {
+            VkAccelerationStructureInstanceKHR asInstance{};
+            asInstance.transform = instance.transform;
+            asInstance.instanceCustomIndex = instance.instanceIndex;
+            asInstance.accelerationStructureReference = instance.blasAddress;
+            asInstance.instanceShaderBindingTableRecordOffset = 0; // May be changed later to support 2-3 material models
+            asInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            asInstance.mask = 0xFF;
+
+            tlasInstances.push_back(asInstance);
+        }
+
+        // Create and upload a buffer with the instance data
+        AllocatedBuffer tlasInstanceBuffer = createBuffer(tlasInstances.size(),
+                                                     VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        void* data = tlasInstanceBuffer.info.pMappedData;
+        memcpy(data, tlasInstances.data(), tlasInstances.size() * sizeof(VkAccelerationStructureInstanceKHR));
+
+        // Fetch buffer device address
+        VkBufferDeviceAddressInfo tlasInstanceBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
+        tlasInstanceBufferAddressInfo.buffer = tlasInstanceBuffer.buffer;
+        VkDeviceAddress tlasInstanceBufferAddress = vkGetBufferDeviceAddress(_device, &tlasInstanceBufferAddressInfo);
+
+        VkAccelerationStructureGeometryInstancesDataKHR instanceData{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR };
+        instanceData.arrayOfPointers = VK_FALSE;
+        instanceData.data.deviceAddress = tlasInstanceBufferAddress;
+
+        VkAccelerationStructureGeometryDataKHR geometryData;
+        geometryData.instances = instanceData;
+
+        VkAccelerationStructureGeometryKHR tlasGeometry{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
+        tlasGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+        tlasGeometry.geometry = geometryData;
+
+        VkAccelerationStructureBuildGeometryInfoKHR tlasBuildGeometryInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+        tlasBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        tlasBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        tlasBuildGeometryInfo.geometryCount = 1;
+        tlasBuildGeometryInfo.pGeometries = &tlasGeometry;
+
+        uint32_t tlasMaxPrimitiveCount[] = { static_cast<uint32_t>(tlasInstances.size()) };
+
+        VkAccelerationStructureBuildSizesInfoKHR tlasBuildSizes;
+        vkGetAccelerationStructureBuildSizesKHR(_device,
+                                                VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                                                &tlasBuildGeometryInfo,
+                                                tlasMaxPrimitiveCount,
+                                                &tlasBuildSizes);
+
+        getCurrentFrame().tlasBuffer = createBuffer(tlasBuildSizes.accelerationStructureSize,
+                                                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+        AllocatedBuffer scratchBuffer = createBuffer(tlasBuildSizes.buildScratchSize, 
+                                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+        VkAccelerationStructureCreateInfoKHR tlasCreateInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+        tlasCreateInfo.buffer = getCurrentFrame().tlasBuffer.buffer;
+        tlasCreateInfo.offset = 0;
+        tlasCreateInfo.size = tlasBuildSizes.accelerationStructureSize;
+        tlasCreateInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
+        vkCreateAccelerationStructureKHR(_device, &tlasCreateInfo, nullptr, &getCurrentFrame().tlas);
+        tlasBuildGeometryInfo.dstAccelerationStructure = getCurrentFrame().tlas;
+
+        VkAccelerationStructureBuildRangeInfoKHR tlasRangeInfo{};
+        tlasRangeInfo.primitiveCount = tlasInstances.size();
+        tlasRangeInfo.primitiveOffset = 0;
+        tlasRangeInfo.firstVertex = 0;
+        tlasRangeInfo.transformOffset = 0;
+
+        VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfos[] = { &tlasRangeInfo };
+
+        // Build the TLAS
+        immediateGraphicsQueueSubmitBlocking([=](VkCommandBuffer cmdBuf){
+            vkCmdBuildAccelerationStructuresKHR(cmdBuf, 1, &tlasBuildGeometryInfo, buildRangeInfos);
+        });
+
+        destroyBuffer(scratchBuffer);
+        destroyBuffer(tlasInstanceBuffer);
+
         _tlasFramesToUpdate -= 1;
-    } 
+    }
 }
 
 void Renderer::immediateGraphicsQueueSubmitBlocking(std::function<void(VkCommandBuffer cmd)>&& function) {

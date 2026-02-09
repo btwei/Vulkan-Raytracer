@@ -71,6 +71,7 @@ struct BlasResources {
 struct BlasInstance {
     VkDeviceAddress blasAddress;
     VkTransformMatrixKHR transform;
+    uint32_t instanceIndex;
 };
 
 }
