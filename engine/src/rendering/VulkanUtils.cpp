@@ -1,6 +1,7 @@
 #include "VulkanUtils.hpp"
 
 #include <algorithm>
+#include <fstream>
 
 namespace vkrt::utils
 {
@@ -110,6 +111,27 @@ void generateMipmaps(VkCommandBuffer cmdBuf, VkImage image, VkExtent2D extent, u
                          0, nullptr,
                          0, nullptr,
                          1, &barrier);
+}
+
+bool loadShaderModule(std::filesystem::path filepath, VkDevice device, VkShaderModule* pShaderModule) {
+    std::ifstream file(filepath.string(), std::ios::binary | std::ios::ate);
+    if(!file.is_open()) return false;
+
+    size_t codeSize = static_cast<size_t>(file.tellg());
+
+    std::vector<uint32_t> codeBuffer(codeSize / sizeof(uint32_t));
+    file.seekg(0);
+    file.read((char*)codeBuffer.data(), codeSize);
+    file.close();
+
+
+    VkShaderModuleCreateInfo createInfo{ .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    createInfo.pCode = codeBuffer.data();
+    createInfo.codeSize = codeSize;
+
+    VkResult result = vkCreateShaderModule(device, &createInfo, nullptr, pShaderModule);
+
+    return (result == VK_SUCCESS);
 }
 
 } // namespace vkrt::utils
