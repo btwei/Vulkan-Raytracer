@@ -91,4 +91,26 @@ VkSubmitInfo defaultSubmitInfo(const std::vector<VkCommandBuffer>& commandBuffer
     return submitInfo;
 }
 
+VkPipelineShaderStageCreateInfo defaultShaderStageInfo(VkShaderStageFlagBits stage, VkShaderModule module, const char* pName) {
+    VkPipelineShaderStageCreateInfo shaderStageInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+    shaderStageInfo.pNext = nullptr;
+
+    shaderStageInfo.pName = pName;
+    shaderStageInfo.stage = stage;
+    shaderStageInfo.module = module;
+
+    return shaderStageInfo;
+}
+
+VkPipelineShaderStageCreateInfo defaultShaderStageInfo(VkShaderStageFlagBits stage, VkShaderModuleCreateInfo& moduleCreateInfo, const char* pName) {
+    VkPipelineShaderStageCreateInfo shaderStageInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+    shaderStageInfo.pNext = &moduleCreateInfo;
+
+    shaderStageInfo.pName = pName;
+    shaderStageInfo.stage = stage;
+    shaderStageInfo.module = VK_NULL_HANDLE;
+
+    return shaderStageInfo;
+}
+
 }
