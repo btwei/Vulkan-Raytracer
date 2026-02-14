@@ -44,6 +44,7 @@ public:
 
     /**
      * @brief Provides a SDL utility to get the executable's path without compromising cross-compatibility
+     * @note This is guaranteed to end with a path separator.
      */
     std::string getBinaryPath() const;
 
