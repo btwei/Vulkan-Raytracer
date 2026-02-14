@@ -113,4 +113,14 @@ VkPipelineShaderStageCreateInfo defaultShaderStageInfo(VkShaderStageFlagBits sta
     return shaderStageInfo;
 }
 
+VkRayTracingShaderGroupCreateInfoKHR emptyShaderGroupInfo() {
+    VkRayTracingShaderGroupCreateInfoKHR shaderGroupInfo{ .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
+    shaderGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
+    shaderGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
+    shaderGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
+    shaderGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+    return shaderGroupInfo;
+}
+
 }

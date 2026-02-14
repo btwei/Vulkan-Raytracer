@@ -73,6 +73,8 @@ public:
     void setTLASBuild(std::vector<BlasInstance>&& instances);
     void setTLASUpdate(std::vector<BlasInstance>&& instances);
 
+    void setCameraTransform();
+
 private:
     bool _isInitialized = false;
     bool _shouldResize = false;
@@ -106,6 +108,9 @@ private:
 
     FrameData _frameData[NUM_FRAMES_IN_FLIGHT];
 
+    VkPipelineLayout _raytracingPipelineLayout;
+    VkPipeline _raytracingPipeline;
+
     std::vector<BlasInstance> _tlasInstanceList;
     int _tlasFramesToUpdate = 0;
     bool _tlasUseUpdateInsteadOfRebuild = false;
@@ -119,6 +124,8 @@ private:
     void initSyncResources();
     void initVMA();
     void initTLAS();
+    void initRaytracingPipeline();
+    void initShaderBindingTable();
 
     void handleResize();
     void handleTLASUpdate();

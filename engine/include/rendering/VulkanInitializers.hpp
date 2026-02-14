@@ -29,6 +29,8 @@ VkSubmitInfo defaultSubmitInfo(const std::vector<VkCommandBuffer>& commandBuffer
 VkPipelineShaderStageCreateInfo defaultShaderStageInfo(VkShaderStageFlagBits stage, VkShaderModule module, const char* pName);
 VkPipelineShaderStageCreateInfo defaultShaderStageInfo(VkShaderStageFlagBits stage, VkShaderModuleCreateInfo& moduleCreateInfo, const char* pName);
 
+VkRayTracingShaderGroupCreateInfoKHR emptyShaderGroupInfo();
+
 } // namespace vkrt::init
 
 #endif // VKRT_VULKANINITIALIZERS_HPP

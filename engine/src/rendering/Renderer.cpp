@@ -1,6 +1,7 @@
 #include "Renderer.hpp"
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 
@@ -24,6 +25,8 @@ void Renderer::init() {
     initSyncResources();
     initVMA();
     initTLAS();
+    initRaytracingPipeline();
+    initShaderBindingTable();
 }
 
 void Renderer::update() {
@@ -136,6 +139,9 @@ void Renderer::cleanup() {
 
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
+
+        vkDestroyPipeline(_device, _raytracingPipeline, nullptr);
+        vkDestroyPipelineLayout(_device, _raytracingPipelineLayout, nullptr);
 
         // Cleanup dynamically created present fences
         for(VkFence& fence : _swapchainPresentFences) {
@@ -707,6 +713,59 @@ void Renderer::initTLAS() {
     setTLASBuild({});
 }
 
+void Renderer::initRaytracingPipeline() {
+    // Load the ray-tracing.spv into a shader module
+    std::filesystem::path raytracingSpvPath = std::filesystem::path(_window->getBinaryPath()).parent_path() / "shaders" / "ray-tracing.spv";
+    VkShaderModule raytracingShaderModule;
+    if(!utils::loadShaderModule(raytracingSpvPath, _device, &raytracingShaderModule)) throw std::runtime_error("Failed to create raytracing shader module!");
+
+    // Create pipeline stages with their entry points
+    std::array<VkPipelineShaderStageCreateInfo, 3> stages{};
+    stages[0] = init::defaultShaderStageInfo(VK_SHADER_STAGE_RAYGEN_BIT_KHR, raytracingShaderModule, "rayGenerationProgram");
+    stages[1] = init::defaultShaderStageInfo(VK_SHADER_STAGE_MISS_BIT_KHR, raytracingShaderModule, "missProgram");
+    stages[2] = init::defaultShaderStageInfo(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, raytracingShaderModule, "closestHitProgram");
+
+    // Create shader groups
+    std::array<VkRayTracingShaderGroupCreateInfoKHR, 3> groups{};
+    groups[0] = init::emptyShaderGroupInfo();
+    groups[0].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+    groups[0].generalShader = 0;
+
+    groups[1] = init::emptyShaderGroupInfo();
+    groups[1].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+    groups[1].generalShader = 1;
+
+    groups[2] = init::emptyShaderGroupInfo();
+    groups[2].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+    groups[2].closestHitShader = 2;
+
+    // Create pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = nullptr;
+
+    VK_REQUIRE_SUCCESS(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_raytracingPipelineLayout));
+
+    VkRayTracingPipelineCreateInfoKHR pipelineInfo{ .sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
+    pipelineInfo.stageCount = static_cast<uint32_t>(stages.size());
+    pipelineInfo.pStages = stages.data();
+    pipelineInfo.groupCount = static_cast<uint32_t>(groups.size());
+    pipelineInfo.pGroups = groups.data();
+    pipelineInfo.maxPipelineRayRecursionDepth = 3;
+    pipelineInfo.layout = _raytracingPipelineLayout;
+
+    VK_REQUIRE_SUCCESS(vkCreateRayTracingPipelinesKHR(_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_raytracingPipeline));
+
+    vkDestroyShaderModule(_device, raytracingShaderModule, nullptr);
+}
+
+void Renderer::initShaderBindingTable() {
+
+}
+
 void Renderer::handleResize() {
     // Get resize request from OS
     if(_window->getWasResized()) _shouldResize = true;
@@ -853,7 +912,7 @@ void Renderer::handleTLASUpdate() {
 
             if(tlasBuildSizes.buildScratchSize > 0 ) {
                 scratchBuffer = createBuffer(tlasBuildSizes.buildScratchSize, 
-                                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
                 VkBufferDeviceAddressInfo scratchBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
                 scratchBufferAddressInfo.buffer = scratchBuffer.buffer;

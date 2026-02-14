@@ -3,8 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-namespace vkrt::utils
-{
+namespace vkrt::utils {
     
 void defaultImageTransition(VkCommandBuffer cmdBuf,
                             VkImage image,
