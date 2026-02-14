@@ -471,8 +471,10 @@ void Renderer::initVulkanBootstrap() {
     swapchainFeatures.swapchainMaintenance1 = VK_TRUE;
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+    accelerationFeatures.accelerationStructure = VK_TRUE;
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+    rtPipelineFeatures.rayTracingPipeline = VK_TRUE;
 
     vkb::PhysicalDeviceSelector deviceSelector{instance_ret.value()};
     auto phys_ret = deviceSelector.set_surface(_surface)
@@ -650,6 +652,7 @@ void Renderer::resizeSwapchainResources() {
     createSwapchainResources(_swapchain);
 }
 
+// Initialize command pools and persistant command buffers that are used for immediate commands and per frame in flight
 void Renderer::initCommandResources() {
     // Initialize per frame command resources
     for(auto& data : _frameData) {
@@ -816,15 +819,26 @@ void Renderer::handleTLASUpdate() {
             destroyBuffer(tlasInstanceBuffer);
         } else {
             // the list of instances is 0 so, we handle this case separately
+            VkAccelerationStructureGeometryInstancesDataKHR instanceData{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR };
+            instanceData.arrayOfPointers = VK_FALSE;
+            instanceData.data.deviceAddress = 0;
+
+            VkAccelerationStructureGeometryDataKHR geometryData;
+            geometryData.instances = instanceData;
+
+            VkAccelerationStructureGeometryKHR tlasGeometry{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
+            tlasGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+            tlasGeometry.geometry = geometryData;
+
             VkAccelerationStructureBuildGeometryInfoKHR tlasBuildGeometryInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
             tlasBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
             tlasBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-            tlasBuildGeometryInfo.geometryCount = 0;
-            tlasBuildGeometryInfo.pGeometries = nullptr;
+            tlasBuildGeometryInfo.geometryCount = 1;
+            tlasBuildGeometryInfo.pGeometries = &tlasGeometry;
 
             uint32_t tlasMaxPrimitiveCount[] = { 0 };
 
-            VkAccelerationStructureBuildSizesInfoKHR tlasBuildSizes;
+            VkAccelerationStructureBuildSizesInfoKHR tlasBuildSizes{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
             vkGetAccelerationStructureBuildSizesKHR(_device,
                                                     VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
                                                     &tlasBuildGeometryInfo,
@@ -834,16 +848,16 @@ void Renderer::handleTLASUpdate() {
             getCurrentFrame().tlasBuffer = createBuffer(tlasBuildSizes.accelerationStructureSize,
                                                         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
             
-            AllocatedBuffer scratchBuffer;
+            AllocatedBuffer scratchBuffer{};
             VkDeviceAddress scratchBufferAddress = 0;
 
             if(tlasBuildSizes.buildScratchSize > 0 ) {
-                AllocatedBuffer scratchBuffer = createBuffer(tlasBuildSizes.buildScratchSize, 
+                scratchBuffer = createBuffer(tlasBuildSizes.buildScratchSize, 
                                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
                 VkBufferDeviceAddressInfo scratchBufferAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
                 scratchBufferAddressInfo.buffer = scratchBuffer.buffer;
-                VkDeviceAddress scratchBufferAddress = vkGetBufferDeviceAddress(_device, &scratchBufferAddressInfo);
+                scratchBufferAddress = vkGetBufferDeviceAddress(_device, &scratchBufferAddressInfo);
             }
 
             VkAccelerationStructureCreateInfoKHR tlasCreateInfo{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
