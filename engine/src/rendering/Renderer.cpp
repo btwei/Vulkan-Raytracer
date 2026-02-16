@@ -25,6 +25,7 @@ void Renderer::init() {
     initSyncResources();
     initVMA();
     initTLAS();
+    initDescriptorSets();
     initRaytracingPipeline();
     initShaderBindingTable();
 }
@@ -139,6 +140,8 @@ void Renderer::cleanup() {
 
     if(_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_device);
+
+        destroyBuffer(_sbtBuffer);
 
         vkDestroyPipeline(_device, _raytracingPipeline, nullptr);
         vkDestroyPipelineLayout(_device, _raytracingPipelineLayout, nullptr);
@@ -713,6 +716,10 @@ void Renderer::initTLAS() {
     setTLASBuild({});
 }
 
+void Renderer::initDescriptorSets() {
+    
+}
+
 void Renderer::initRaytracingPipeline() {
     // Load the ray-tracing.spv into a shader module
     std::filesystem::path raytracingSpvPath = std::filesystem::path(_window->getBinaryPath()).parent_path() / "shaders" / "ray-tracing.spv";
@@ -763,7 +770,78 @@ void Renderer::initRaytracingPipeline() {
 }
 
 void Renderer::initShaderBindingTable() {
+    // Get raytracing device properties to get info on SBT handle size and alignment
+    VkPhysicalDeviceProperties2 props{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
+    props.pNext = &rtProps;
+    vkGetPhysicalDeviceProperties2(_physicalDevice, &props);
+    uint32_t handleSize = rtProps.shaderGroupHandleSize;
+    
+    // Query rtPipeline for shader group handles
+    uint32_t groupCount = 3;
+    uint32_t sbtSize = groupCount * handleSize; // groups * bytes / group = # bytes
+    std::vector<std::byte> handles(sbtSize); 
+    VK_REQUIRE_SUCCESS(vkGetRayTracingShaderGroupHandlesKHR(_device, _raytracingPipeline, 0, groupCount, sbtSize, handles.data()));
 
+    // Compute total buffer size, while respecting alignment
+    uint32_t handleAlignment = rtProps.shaderGroupHandleAlignment;
+    uint32_t baseAlignment = rtProps.shaderGroupBaseAlignment;
+
+    auto align = [](uint32_t x, uint32_t a) { return (x + a - 1) & ~(a - 1); };
+
+    uint32_t raygenSize = align(handleSize, handleAlignment);
+    uint32_t missSize = align(handleSize, handleAlignment);
+    uint32_t hitSize = align(handleSize, handleAlignment);
+
+    uint32_t raygenOffset = 0;
+    uint32_t missOffset = align(raygenOffset + raygenSize, baseAlignment);
+    uint32_t hitOffset = align(missOffset + missSize, baseAlignment);
+
+    size_t bufferSize = hitOffset + hitSize;
+
+    // Create the SBT buffer
+    AllocatedBuffer stagingBuffer = createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+    std::byte* mappedDataPtr = reinterpret_cast<std::byte*>(stagingBuffer.info.pMappedData);
+
+        // Copy our one raygen section
+        memcpy(mappedDataPtr + raygenOffset, handles.data(), handleSize);
+
+        // Copy our one miss section
+        memcpy(mappedDataPtr + missOffset, handles.data() + handleSize, handleSize);
+
+        // Copy our one hit section
+        memcpy(mappedDataPtr + hitOffset, handles.data() + 2 * handleSize, handleSize);
+
+    _sbtBuffer = createBuffer(bufferSize,
+                              VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                              VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR |
+                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+    immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf){
+        VkBufferCopy sbtRegion{};
+        sbtRegion.size = bufferSize;
+        sbtRegion.srcOffset = 0;
+        vkCmdCopyBuffer(cmdBuf, stagingBuffer.buffer, _sbtBuffer.buffer, 1, &sbtRegion);
+    });
+
+    VkBufferDeviceAddressInfo addressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
+    addressInfo.buffer = _sbtBuffer.buffer;
+    _sbtAddress = vkGetBufferDeviceAddress(_device, &addressInfo);
+
+    // Populate regions
+    raygenRegion.deviceAddress = _sbtAddress;
+    raygenRegion.stride = raygenSize;
+    raygenRegion.size = raygenSize;
+
+    missRegion.deviceAddress = _sbtAddress + missOffset;
+    missRegion.stride = missSize;
+    missRegion.size = missSize;
+
+    hitRegion.deviceAddress = _sbtAddress + hitOffset;
+    hitRegion.stride = hitSize;
+    hitRegion.size = hitSize;
+
+    callableRegion = {};
 }
 
 void Renderer::handleResize() {

@@ -111,6 +111,13 @@ private:
     VkPipelineLayout _raytracingPipelineLayout;
     VkPipeline _raytracingPipeline;
 
+    AllocatedBuffer _sbtBuffer;
+    VkDeviceAddress _sbtAddress;
+    VkStridedDeviceAddressRegionKHR raygenRegion;
+    VkStridedDeviceAddressRegionKHR missRegion;
+    VkStridedDeviceAddressRegionKHR hitRegion;
+    VkStridedDeviceAddressRegionKHR callableRegion;
+
     std::vector<BlasInstance> _tlasInstanceList;
     int _tlasFramesToUpdate = 0;
     bool _tlasUseUpdateInsteadOfRebuild = false;
@@ -124,6 +131,7 @@ private:
     void initSyncResources();
     void initVMA();
     void initTLAS();
+    void initDescriptorSets();
     void initRaytracingPipeline();
     void initShaderBindingTable();
 
