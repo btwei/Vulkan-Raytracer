@@ -9,6 +9,7 @@
 #include <vk_mem_alloc.h>
 
 #include "SceneManager.hpp"
+#include "VulkanDescriptors.hpp"
 #include "VulkanTypes.hpp"
 #include "Window.hpp"
 
@@ -36,6 +37,9 @@ struct FrameData {
 
     VkFence _renderFence;
     VkSemaphore _acquireToRenderSemaphore;
+
+    DescriptorAllocator _descriptorAllocator;
+    VkDescriptorSet _descriptorSet0;
 
     VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     AllocatedBuffer tlasBuffer;
@@ -107,6 +111,8 @@ private:
     VkFence _immediateFence;
 
     FrameData _frameData[NUM_FRAMES_IN_FLIGHT];
+
+    VkDescriptorSetLayout _descriptorLayout1;
 
     VkPipelineLayout _raytracingPipelineLayout;
     VkPipeline _raytracingPipeline;

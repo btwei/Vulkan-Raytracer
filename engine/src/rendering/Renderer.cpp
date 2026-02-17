@@ -155,6 +155,8 @@ void Renderer::cleanup() {
         for(auto& data : _frameData) {
             _frameData->_deletionQueue.flushQueue();
 
+            data._descriptorAllocator.destroy(_device);
+
             vkDestroyAccelerationStructureKHR(_device, data.tlas, nullptr);
             destroyBuffer(data.tlasBuffer);
 
@@ -717,7 +719,23 @@ void Renderer::initTLAS() {
 }
 
 void Renderer::initDescriptorSets() {
-    
+    // Build our descriptor1 layout and write it to the renderer class for use with pipeline creation
+    // My intent is for descriptor0 to be written once and descriptor1 to be written per frame at the moment
+    DescriptorLayoutBuilder layout;
+    layout.add_binding(0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    layout.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+
+    VK_REQUIRE_SUCCESS(layout.build(_device, &_descriptorLayout1));
+
+    std::vector<VkDescriptorPoolSize> sizes;
+    sizes.push_back({VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1});
+    sizes.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1});
+
+    for(FrameData& data : _frameData) {
+        data._descriptorAllocator.init(_device, 1, sizes);
+
+        VK_REQUIRE_SUCCESS(data._descriptorAllocator.allocate(_device, &_descriptorLayout1, &data._descriptorSet0));
+    }
 }
 
 void Renderer::initRaytracingPipeline() {
@@ -751,8 +769,8 @@ void Renderer::initRaytracingPipeline() {
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &_descriptorLayout1;
 
     VK_REQUIRE_SUCCESS(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_raytracingPipelineLayout));
 
