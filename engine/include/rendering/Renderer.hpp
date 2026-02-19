@@ -47,6 +47,13 @@ struct FrameData {
     DeletionQueue _deletionQueue;
 };
 
+struct PushConstants {
+    glm::mat4 viewMatrix;
+    glm::mat4 inverseViewMatrix;
+    glm::mat4 projectionMatrix;
+    glm::mat4 inverseProjectionMatrix;
+};
+
 class Renderer {
 public:
     Renderer(Window* window);
@@ -77,7 +84,8 @@ public:
     void setTLASBuild(std::vector<BlasInstance>&& instances);
     void setTLASUpdate(std::vector<BlasInstance>&& instances);
 
-    void setCameraTransform();
+    void setViewMatrix(glm::mat4 viewMatrix);
+    void setProjectionMatrix(glm::mat4 projectionMatrix);
 
 private:
     bool _isInitialized = false;
@@ -124,6 +132,8 @@ private:
     VkStridedDeviceAddressRegionKHR hitRegion;
     VkStridedDeviceAddressRegionKHR callableRegion;
 
+    PushConstants pcs;
+
     std::vector<BlasInstance> _tlasInstanceList;
     int _tlasFramesToUpdate = 0;
     bool _tlasUseUpdateInsteadOfRebuild = false;
@@ -137,6 +147,7 @@ private:
     void initSyncResources();
     void initVMA();
     void initTLAS();
+    void initTransforms();
     void initDescriptorSets();
     void initRaytracingPipeline();
     void initShaderBindingTable();

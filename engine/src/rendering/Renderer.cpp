@@ -25,6 +25,7 @@ void Renderer::init() {
     initSyncResources();
     initVMA();
     initTLAS();
+    initTransforms();
     initDescriptorSets();
     initRaytracingPipeline();
     initShaderBindingTable();
@@ -429,6 +430,16 @@ void Renderer::setTLASUpdate(std::vector<BlasInstance>&& instances) {
     _tlasUseUpdateInsteadOfRebuild = true;
 }
 
+void Renderer::setViewMatrix(glm::mat4 viewMatrix) {
+    pcs.viewMatrix = viewMatrix;
+    pcs.inverseViewMatrix = glm::inverse(viewMatrix);
+}
+
+void Renderer::setProjectionMatrix(glm::mat4 projectionMatrix) {
+    pcs.projectionMatrix = projectionMatrix;
+    pcs.inverseProjectionMatrix = glm::inverse(projectionMatrix);
+}
+
 void Renderer::initVulkanBootstrap() {
     // Initialize Volk; Fails if Vulkan loader cannot be located
     VK_REQUIRE_SUCCESS(volkInitialize());
@@ -718,6 +729,15 @@ void Renderer::initTLAS() {
     setTLASBuild({});
 }
 
+void Renderer::initTransforms() {
+    // Set default transforms here
+    glm::mat4 viewMatrix = glm::mat4(1);
+    setViewMatrix(viewMatrix);
+
+    glm::mat4 projectionMatrix = glm::perspective(glm::radians(70.f), (float)_window->getFramebufferWidth() / (float)_window->getFramebufferHeight(), 10000.f, 0.1f);
+    setProjectionMatrix(projectionMatrix);
+}
+
 void Renderer::initDescriptorSets() {
     // Build our descriptor1 layout and write it to the renderer class for use with pipeline creation
     // My intent is for descriptor0 to be written once and descriptor1 to be written per frame at the moment
@@ -765,9 +785,13 @@ void Renderer::initRaytracingPipeline() {
     groups[2].closestHitShader = 2;
 
     // Create pipeline layout
+    VkPushConstantRange pcRange{};
+    pcRange.size = sizeof(PushConstants);
+    pcRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR; // subject to change as neccessary
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pcRange;
 
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &_descriptorLayout1;
