@@ -52,6 +52,8 @@ void Renderer::update() {
 
     handleTLASUpdate();
 
+    writeDescriptorUpdates(_swapchainImageViews[swapchainImageIndex]);
+
     // Do rendering
     VkCommandBuffer cmdBuf = getCurrentFrame()._mainCommandBuffer;
 
@@ -61,7 +63,7 @@ void Renderer::update() {
     VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
-                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
                                             0, VK_ACCESS_TRANSFER_WRITE_BIT,
                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                             1);
@@ -76,11 +78,10 @@ void Renderer::update() {
             .layerCount = 1
         };
 
-        // Temporary workload for debugging and validating working main render loop
-        vkCmdClearColorImage(cmdBuf, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &imageRange);
+        raytraceScene(cmdBuf, _swapchainImages[swapchainImageIndex]);
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
-                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                             VK_ACCESS_TRANSFER_WRITE_BIT, 0,
                                             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                             1);
@@ -754,7 +755,7 @@ void Renderer::initDescriptorSets() {
     for(FrameData& data : _frameData) {
         data._descriptorAllocator.init(_device, 1, sizes);
 
-        VK_REQUIRE_SUCCESS(data._descriptorAllocator.allocate(_device, &_descriptorLayout1, &data._descriptorSet0));
+        VK_REQUIRE_SUCCESS(data._descriptorAllocator.allocate(_device, &_descriptorLayout1, &data._descriptorSet1));
     }
 }
 
@@ -871,19 +872,67 @@ void Renderer::initShaderBindingTable() {
     _sbtAddress = vkGetBufferDeviceAddress(_device, &addressInfo);
 
     // Populate regions
-    raygenRegion.deviceAddress = _sbtAddress;
-    raygenRegion.stride = raygenSize;
-    raygenRegion.size = raygenSize;
+    _raygenRegion.deviceAddress = _sbtAddress;
+    _raygenRegion.stride = raygenSize;
+    _raygenRegion.size = raygenSize;
 
-    missRegion.deviceAddress = _sbtAddress + missOffset;
-    missRegion.stride = missSize;
-    missRegion.size = missSize;
+    _missRegion.deviceAddress = _sbtAddress + missOffset;
+    _missRegion.stride = missSize;
+    _missRegion.size = missSize;
 
-    hitRegion.deviceAddress = _sbtAddress + hitOffset;
-    hitRegion.stride = hitSize;
-    hitRegion.size = hitSize;
+    _hitRegion.deviceAddress = _sbtAddress + hitOffset;
+    _hitRegion.stride = hitSize;
+    _hitRegion.size = hitSize;
 
-    callableRegion = {};
+    _callableRegion = {};
+}
+
+void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
+    // Update per frame descriptors
+    // Practically speaking.. these must be updated because frames in flight != swapchain count necessarily
+    // But TLAS aren't built every frame necessarily.. perhaps I'll do partial descriptor updates later
+    VkWriteDescriptorSetAccelerationStructureKHR tlasInfo{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR };
+    tlasInfo.accelerationStructureCount = 1;
+    tlasInfo.pAccelerationStructures = &getCurrentFrame().tlas;
+
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.imageView = swapchainImageView;
+    imageInfo.sampler = VK_NULL_HANDLE;
+
+    std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrites[0].dstSet = getCurrentFrame()._descriptorSet1;
+    descriptorWrites[0].dstBinding = 0;
+    descriptorWrites[0].dstArrayElement = 0;
+    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    descriptorWrites[0].descriptorCount = 1;
+    descriptorWrites[0].pNext = &tlasInfo;
+
+    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrites[1].dstSet = getCurrentFrame()._descriptorSet1;
+    descriptorWrites[1].dstBinding = 0;
+    descriptorWrites[1].dstArrayElement = 0;
+    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWrites[1].descriptorCount = 1;
+    descriptorWrites[1].pImageInfo = &imageInfo;
+
+    vkUpdateDescriptorSets(_device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+}
+
+void Renderer::raytraceScene(VkCommandBuffer cmdBuf, VkImage image) {
+    // Bind the pipeline
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _raytracingPipeline);
+
+    // Bind the descriptor sets
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _raytracingPipelineLayout, 1, 1, &getCurrentFrame()._descriptorSet1, 0, nullptr);
+
+    // Update and Push constants
+    // no updates here yet.. matricies may be updated externally via setViewMatrix or setProjectionMatrix
+    vkCmdPushConstants(cmdBuf, _raytracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(PushConstants), &pcs);
+
+    // Ray trace
+    vkCmdTraceRaysKHR(cmdBuf, &_raygenRegion, &_missRegion, &_hitRegion, &_callableRegion, _swapchainExtent.width, _swapchainExtent.height, 1);
 }
 
 void Renderer::handleResize() {

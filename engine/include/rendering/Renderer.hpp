@@ -39,7 +39,7 @@ struct FrameData {
     VkSemaphore _acquireToRenderSemaphore;
 
     DescriptorAllocator _descriptorAllocator;
-    VkDescriptorSet _descriptorSet0;
+    VkDescriptorSet _descriptorSet1;
 
     VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     AllocatedBuffer tlasBuffer;
@@ -127,10 +127,10 @@ private:
 
     AllocatedBuffer _sbtBuffer;
     VkDeviceAddress _sbtAddress;
-    VkStridedDeviceAddressRegionKHR raygenRegion;
-    VkStridedDeviceAddressRegionKHR missRegion;
-    VkStridedDeviceAddressRegionKHR hitRegion;
-    VkStridedDeviceAddressRegionKHR callableRegion;
+    VkStridedDeviceAddressRegionKHR _raygenRegion;
+    VkStridedDeviceAddressRegionKHR _missRegion;
+    VkStridedDeviceAddressRegionKHR _hitRegion;
+    VkStridedDeviceAddressRegionKHR _callableRegion;
 
     PushConstants pcs;
 
@@ -152,6 +152,8 @@ private:
     void initRaytracingPipeline();
     void initShaderBindingTable();
 
+    void writeDescriptorUpdates(VkImageView swapchainImageView);
+    void raytraceScene(VkCommandBuffer cmdBuf, VkImage image);
     void handleResize();
     void handleTLASUpdate();
 
