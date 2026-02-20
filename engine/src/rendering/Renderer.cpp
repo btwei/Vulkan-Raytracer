@@ -64,8 +64,8 @@ void Renderer::update() {
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
                                             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-                                            0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                            0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
                                             1);
 
         VkClearColorValue clearColor{1.0, 0.0, 0.0, 1.0}; 
@@ -82,8 +82,8 @@ void Renderer::update() {
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
                                             VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                            VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-                                            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, 0,
+                                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                             1);
 
     VK_REQUIRE_SUCCESS(vkEndCommandBuffer(cmdBuf));
