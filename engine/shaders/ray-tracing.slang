@@ -1,8 +1,11 @@
 struct PushContants {
-    float4x4 inverseProjection;
-    float4x4 inverseView;
+    // Compiling with slangc uses col-major format:
+    // see https://shader-slang.org/slang/user-guide/a1-01-matrix-layout.html#two-conventions-of-matrix-transform-math
+    float4x4 viewMatrix;
+    float4x4 inverseViewMatrix;
+    float4x4 projectionMatrix;
+    float4x4 inverseProjectionMatrix;
 };
-
 
 [[vk::push_constant]] PushContants pcs;
 
@@ -26,11 +29,11 @@ void rayGenerationProgram() {
     const float2 clipCoords = pixelIdx / extent * 2.0 - 1.0;
 
     // Ray direction in view space
-    const float4 viewCoords = mul(float4(clipCoords, 1.0, 1.0), pcs.inverseProjection);
+    const float4 viewCoords = mul(float4(clipCoords, 1.0, 1.0), pcs.inverseProjectionMatrix);
 
     RayDesc ray;
-    ray.Origin = mul(float4(0.0, 0.0, 0.0, 1.0), pcs.inverseView).xyz;
-    ray.Direction = mul(float4(normalize(viewCoords.xyz), 0.0), pcs.inverseView).xyz;
+    ray.Origin = mul(float4(0.0, 0.0, 0.0, 1.0), pcs.inverseViewMatrix).xyz;
+    ray.Direction = mul(float4(normalize(viewCoords.xyz), 0.0), pcs.inverseViewMatrix).xyz;
     ray.TMin = 0.001;
     ray.TMax = 10000.0;
 
