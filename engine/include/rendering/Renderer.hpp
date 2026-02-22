@@ -120,6 +120,7 @@ private:
 
     FrameData _frameData[NUM_FRAMES_IN_FLIGHT];
 
+    VkDescriptorSetLayout _descriptorLayout0;
     VkDescriptorSetLayout _descriptorLayout1;
 
     VkPipelineLayout _raytracingPipelineLayout;

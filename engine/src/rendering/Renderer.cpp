@@ -740,22 +740,32 @@ void Renderer::initTransforms() {
 }
 
 void Renderer::initDescriptorSets() {
+    // Global descriptor set -- relatively static, will fill up with texture arrays, etc in the future
+    // 
+    {
+        DescriptorLayoutBuilder layout;
+
+        VK_REQUIRE_SUCCESS(layout.build(_device, &_descriptorLayout0));
+    }
+
     // Build our descriptor1 layout and write it to the renderer class for use with pipeline creation
     // My intent is for descriptor0 to be written once and descriptor1 to be written per frame at the moment
-    DescriptorLayoutBuilder layout;
-    layout.add_binding(0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    layout.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    {
+        DescriptorLayoutBuilder layout;
+        layout.add_binding(0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+        layout.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
-    VK_REQUIRE_SUCCESS(layout.build(_device, &_descriptorLayout1));
+        VK_REQUIRE_SUCCESS(layout.build(_device, &_descriptorLayout1));
 
-    std::vector<VkDescriptorPoolSize> sizes;
-    sizes.push_back({VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1});
-    sizes.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1});
+        std::vector<VkDescriptorPoolSize> sizes;
+        sizes.push_back({VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1});
+        sizes.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1});
 
-    for(FrameData& data : _frameData) {
-        data._descriptorAllocator.init(_device, 1, sizes);
+        for(FrameData& data : _frameData) {
+            data._descriptorAllocator.init(_device, 1, sizes);
 
-        VK_REQUIRE_SUCCESS(data._descriptorAllocator.allocate(_device, &_descriptorLayout1, &data._descriptorSet1));
+            VK_REQUIRE_SUCCESS(data._descriptorAllocator.allocate(_device, &_descriptorLayout1, &data._descriptorSet1));
+        }
     }
 }
 
@@ -794,8 +804,10 @@ void Renderer::initRaytracingPipeline() {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pcRange;
 
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &_descriptorLayout1;
+    std::array<VkDescriptorSetLayout, 2> setLayouts = { _descriptorLayout0, _descriptorLayout1 };
+
+    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+    pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
     VK_REQUIRE_SUCCESS(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_raytracingPipelineLayout));
 
@@ -911,7 +923,7 @@ void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
 
     descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrites[1].dstSet = getCurrentFrame()._descriptorSet1;
-    descriptorWrites[1].dstBinding = 0;
+    descriptorWrites[1].dstBinding = 1;
     descriptorWrites[1].dstArrayElement = 0;
     descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorWrites[1].descriptorCount = 1;
