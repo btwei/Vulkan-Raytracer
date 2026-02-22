@@ -41,6 +41,9 @@ struct FrameData {
     DescriptorAllocator _descriptorAllocator;
     VkDescriptorSet _descriptorSet1;
 
+    bool _drawImageShouldResize = false;
+    AllocatedImage _drawImage;
+
     VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     AllocatedBuffer tlasBuffer;
 
@@ -152,9 +155,11 @@ private:
     void initDescriptorSets();
     void initRaytracingPipeline();
     void initShaderBindingTable();
+    void initDrawImages();
+    void resizeDrawImage();
 
     void writeDescriptorUpdates(VkImageView swapchainImageView);
-    void raytraceScene(VkCommandBuffer cmdBuf, VkImage image);
+    void raytraceScene(VkCommandBuffer cmdBuf);
     void handleResize();
     void handleTLASUpdate();
 

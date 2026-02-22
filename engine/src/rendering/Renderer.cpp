@@ -29,6 +29,7 @@ void Renderer::init() {
     initDescriptorSets();
     initRaytracingPipeline();
     initShaderBindingTable();
+    initDrawImages();
 }
 
 void Renderer::update() {
@@ -50,6 +51,8 @@ void Renderer::update() {
 
     VK_REQUIRE_SUCCESS(vkResetFences(_device, 1, &getCurrentFrame()._renderFence));
 
+    resizeDrawImage();
+
     handleTLASUpdate();
 
     writeDescriptorUpdates(_swapchainImageViews[swapchainImageIndex]);
@@ -63,9 +66,9 @@ void Renderer::update() {
     VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
-                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-                                            0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                             1);
 
         VkClearColorValue clearColor{1.0, 0.0, 0.0, 1.0}; 
@@ -78,12 +81,33 @@ void Renderer::update() {
             .layerCount = 1
         };
 
-        raytraceScene(cmdBuf, _swapchainImages[swapchainImageIndex]);
+        raytraceScene(cmdBuf);
+
+        VkImageBlit blit{};
+        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.srcSubresource.mipLevel = 0;
+
+        blit.srcOffsets[1].x = getCurrentFrame()._drawImage.imageExtent.width;
+        blit.srcOffsets[1].y = getCurrentFrame()._drawImage.imageExtent.height;
+        blit.srcOffsets[1].z = 1;
+
+        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = 1;
+        blit.dstSubresource.mipLevel = 0;
+
+        blit.dstOffsets[1].x = _swapchainExtent.width;
+        blit.dstOffsets[1].y = _swapchainExtent.height;
+        blit.dstOffsets[1].z = 1;
+
+        vkCmdBlitImage(cmdBuf, getCurrentFrame()._drawImage.image, VK_IMAGE_LAYOUT_GENERAL, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
 
         vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
-                                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, 0,
-                                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                            VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+                                            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                             1);
 
     VK_REQUIRE_SUCCESS(vkEndCommandBuffer(cmdBuf));
@@ -155,6 +179,8 @@ void Renderer::cleanup() {
 
         // Cleanup frameData
         for(auto& data : _frameData) {
+            destroyImage(data._drawImage);
+
             _frameData->_deletionQueue.flushQueue();
 
             data._descriptorAllocator.destroy(_device);
@@ -899,6 +925,41 @@ void Renderer::initShaderBindingTable() {
     _callableRegion = {};
 }
 
+void Renderer::initDrawImages() {
+    for(FrameData& data : _frameData) {
+        data._drawImage = createImage(VkExtent3D(_swapchainExtent.width, _swapchainExtent.height, 1),
+                                     VK_FORMAT_R16G16B16A16_SFLOAT,
+                                     VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        
+        immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf){
+            vkrt::utils::defaultImageTransition(cmdBuf, data._drawImage.image,
+                                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                                                0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                                                1);
+        });
+    }
+}
+
+void Renderer::resizeDrawImage() {
+    if(getCurrentFrame()._drawImageShouldResize) {
+        destroyImage(getCurrentFrame()._drawImage);
+        getCurrentFrame()._drawImage = createImage(VkExtent3D(_swapchainExtent.width, _swapchainExtent.height, 1),
+                                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                   VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+
+        immediateGraphicsQueueSubmitBlocking([&](VkCommandBuffer cmdBuf){
+            vkrt::utils::defaultImageTransition(cmdBuf, getCurrentFrame()._drawImage.image,
+                                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                                                0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                                                1);
+        });
+
+        getCurrentFrame()._drawImageShouldResize = false;
+    }
+}
+
 void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
     // Update per frame descriptors
     // Practically speaking.. these must be updated because frames in flight != swapchain count necessarily
@@ -909,7 +970,7 @@ void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
 
     VkDescriptorImageInfo imageInfo{};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-    imageInfo.imageView = swapchainImageView;
+    imageInfo.imageView = getCurrentFrame()._drawImage.imageView;
     imageInfo.sampler = VK_NULL_HANDLE;
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -932,7 +993,7 @@ void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
     vkUpdateDescriptorSets(_device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
-void Renderer::raytraceScene(VkCommandBuffer cmdBuf, VkImage image) {
+void Renderer::raytraceScene(VkCommandBuffer cmdBuf) {
     // Bind the pipeline
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _raytracingPipeline);
 
@@ -954,6 +1015,9 @@ void Renderer::handleResize() {
     // Process resize if necessary
     if(_shouldResize) {
         resizeSwapchainResources();
+        
+        for(FrameData& data : _frameData) { data._drawImageShouldResize = true; }
+
         _shouldResize = false;
     }
 }
