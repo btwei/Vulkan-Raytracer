@@ -9,7 +9,7 @@ struct PushContants {
 
 [[vk::push_constant]] PushContants pcs;
 
-[[vk::binding(1, 0)]] RaytracingAccelerationStructure tlas;
+[[vk::binding(0, 1)]] RaytracingAccelerationStructure tlas;
 [[vk::binding(1, 1)]] RWTexture2D<float4> image;
 
 struct Payload {
