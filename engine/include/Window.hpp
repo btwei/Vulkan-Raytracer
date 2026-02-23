@@ -1,8 +1,10 @@
 #ifndef VKRT_WINDOW_HPP
 #define VKRT_WINDOW_HPP
 
+#include <functional>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_vulkan.h"
@@ -30,10 +32,11 @@ public:
     void open(const std::string& windowName, int width, int height);
     void close();
 
-    VkSurfaceKHR createSurface(VkInstance instance);
-
+    /**
+     * @brief Calls eventHandler once per event per engine update, when SDL events are polled
+     */
+    void registerEventHandler(std::function<void(SDL_Event e)> eventHandler);
     bool handleEvents();
-    bool getShouldClose() const { return _shouldClose; };
 
     /**
      * @brief Gets _wasResized and expects caller to handle window resize. Sets _wasResized to false after calling.
@@ -41,6 +44,8 @@ public:
      * @warning This function should only be called from the Renderer class. 
      */
     bool getWasResized();
+    bool getShouldClose() const { return _shouldClose; };
+    VkSurfaceKHR createSurface(VkInstance instance);
 
     /**
      * @brief Provides a SDL utility to get the executable's path without compromising cross-compatibility
@@ -56,6 +61,8 @@ public:
 
 private:
     static int _instanceCount;
+
+    std::vector<std::function<void(SDL_Event e)>> _eventHandlerCallbacks;
 
     SDL_Window* _window = nullptr;
     SDL_WindowID _windowID = 0;

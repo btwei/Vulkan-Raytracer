@@ -47,9 +47,14 @@ VkSurfaceKHR Window::createSurface(VkInstance instance) {
     return surface;
 }
 
+void Window::registerEventHandler(std::function<void(SDL_Event e)> eventHandler) {
+    _eventHandlerCallbacks.push_back(eventHandler);
+}
+
 bool Window::handleEvents() {
     SDL_Event e;
     while(SDL_PollEvent(&e)) {
+        // Manage window state
         if(e.type == SDL_EVENT_QUIT) _shouldClose = true;
         if(e.type == SDL_EVENT_WINDOW_RESIZED) {
             {
@@ -60,8 +65,11 @@ bool Window::handleEvents() {
             }
         }
 
-        // TODO: handle events and update Window class's internal state
-        // will do this later as I determine what states are needed / how to handle dearimgui integration--specifically capturing inputs
+        // Handle engine registered callbacks
+        // note: This method was chosen for easy integration with dearImGui
+        for(std::function<void(SDL_Event e)>& eventHandler : _eventHandlerCallbacks) {
+            eventHandler(e);
+        }
     }
 
     return true;
