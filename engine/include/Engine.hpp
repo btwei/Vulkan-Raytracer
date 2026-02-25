@@ -6,6 +6,7 @@
 
 #include "AssetManager.hpp"
 #include "EntityManager.hpp"
+#include "InputManager.hpp"
 #include "Renderer.hpp"
 #include "Window.hpp"
 
@@ -33,6 +34,7 @@ private:
     std::unique_ptr<Window> _window;
     std::unique_ptr<Renderer> _renderer;
     std::unique_ptr<AssetManager> _assetManager;
+    std::unique_ptr<InputManager> _inputManager;
     std::unique_ptr<EntityManager> _entityManager;
 };
 

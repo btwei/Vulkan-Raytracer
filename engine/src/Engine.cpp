@@ -23,6 +23,9 @@ void Engine::init(const std::string& windowName, int width, int height) {
     _assetManager = std::make_unique<AssetManager>(_renderer.get());
     _assetManager->init(_window->getBinaryPath());
 
+    _inputManager = std::make_unique<InputManager>(_window.get());
+    _inputManager->init();
+
     _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get());
     _entityManager->init();
 }
@@ -40,6 +43,7 @@ void Engine::run() {
 void Engine::destroy() {
     _entityManager.release();
     _assetManager.release();
+    _inputManager.release();
     _renderer.release();
     _window->close();
 }
