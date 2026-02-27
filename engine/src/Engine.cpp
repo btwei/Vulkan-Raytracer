@@ -32,6 +32,8 @@ void Engine::init(const std::string& windowName, int width, int height) {
 
 void Engine::run() {
     while(!_window->getShouldClose()) {
+        _inputManager->beginFrame();
+        
         _window->handleEvents();
 
         _entityManager->update();
