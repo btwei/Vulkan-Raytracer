@@ -19,7 +19,7 @@ enum VKRT_KEY {
     VKRT_F10_KEY,
     VKRT_F11_KEY,
     VKRT_F12_KEY,
-    VKRT_GRAVES_KEY,
+    VKRT_GRAVE_KEY,
     VKRT_1_KEY,
     VKRT_2_KEY,
     VKRT_3_KEY,
@@ -37,16 +37,20 @@ enum VKRT_KEY {
     VKRT_AT_SIGN_KEY,
     VKRT_POUND_SIGN_KEY,
     VKRT_DOLLAR_SIGN_KEY,
-    VKRY_PERCENT_SIGN_KEY,
+    VKRT_PERCENT_SIGN_KEY,
     VKRT_UP_CARET_KEY,
     VKRT_AMPERSAND_KEY,
-    VKRT_STAR_KEY,
+    VKRT_ASTERISK_KEY,
     VKRT_LEFT_PARENTHESIS_KEY,
     VKRT_RIGHT_PARENTHESIS_KEY,
     VKRT_UNDERSCORE_KEY,
     VKRT_PLUS_KEY,
     VKRT_BACKSPACE_KEY,
     VKRT_TAB_KEY,
+    VKRT_CAPS_LOCK_KEY,
+    VKRT_LSHIFT_KEY,
+    VKRT_LCONTROL_KEY,
+    VKRT_LALT_KEY,
     VKRT_Q_KEY,
     VKRT_W_KEY,
     VKRT_E_KEY,
@@ -74,7 +78,7 @@ enum VKRT_KEY {
     VKRT_N_KEY,
     VKRT_M_KEY,
     VKRT_LEFT_CURLY_BRACKET_KEY,
-    VKRT_RIGHT_CURLY_BRACKEY_KEY,
+    VKRT_RIGHT_CURLY_BRACKET_KEY,
     VKRT_VERTICAL_PIPE_KEY,
     VKRT_LEFT_BRACKET_KEY,
     VKRT_RIGHT_BRACKET_KEY,
@@ -83,12 +87,14 @@ enum VKRT_KEY {
     VKRT_SINGLE_QUOTE_KEY,
     VKRT_COLON_KEY,
     VKRT_DOUBLE_QUOTE_KEY,
+    VKRT_RETURN_KEY,
     VKRT_COMMA_KEY,
     VKRT_PERIOD_KEY,
     VKRT_BACKSLASH_KEY,
     VKRT_LESS_THAN_KEY,
     VKRT_GREATER_THAN_KEY,
     VKRT_QUESTION_MARK_KEY,
+    VKRT_RSHIFT_KEY,
     VKRT_ARROW_LEFT_KEY,
     VKRT_ARROW_UP_KEY,
     VKRT_ARROW_DOWN_KEY,
@@ -106,6 +112,9 @@ struct MouseState {
     float y = 0.0;
     float dx = 0.0;
     float dy = 0.0;
+
+    Sint32 vertScroll = 0;
+    Sint32 horizontalScroll = 0;
     
     KeyState m1;
     KeyState m2;
@@ -114,8 +123,6 @@ struct MouseState {
 
 struct KeyboardState {
     KeyState keys[VKRT_KEY_COUNT];
-
-
 };
 
 struct InputState {
@@ -123,6 +130,11 @@ struct InputState {
     KeyboardState keyboardState;
 };
 
+/**
+ * @class InputManager
+ * @brief This class registers a callback with the Window class to process events into an input state. 
+ * At the beginning of each update frame, this class must call beginFrame to clear the previous inputs.
+ */
 class InputManager {
 public:
     InputManager(Window* window);
@@ -141,6 +153,7 @@ private:
     void handleKeyboardEvent(const SDL_Event& e);
     void handleMouseMotionEvent(const SDL_Event& e);
     void handleMouseButtonEvent(const SDL_Event& e);
+    void handleMouseWheelEvent(const SDL_Event& e);
 
     void updateKeyState(KeyState& current, bool down);
 };
