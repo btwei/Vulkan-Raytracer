@@ -29,6 +29,7 @@ void InputManager::init() {
                 break;
             default:
                 // Unhandled SDL event (this is expected for most of the input unrelated events)
+                break;
         }
     });
 }
@@ -241,6 +242,7 @@ void InputManager::handleKeyboardEvent(const SDL_Event& e) {
             updateKeyState(_inputState.keyboardState.keys[VKRT_ARROW_RIGHT_KEY], e.key.down); break;
         default:
             // Unhandled input; possibly log this in the future
+            break;
     }
 }
 
