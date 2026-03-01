@@ -1,5 +1,5 @@
 #include "CameraSystem.hpp"
 
-void CameraSystem::update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList) {
+void CameraSystem::update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList, const vkrt::GlobalSingletons globalSingletons) {
     
 }

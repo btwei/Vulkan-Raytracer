@@ -9,7 +9,9 @@
  */
 class TestSystem : public vkrt::System {
 public:
-    virtual void update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList) override;
+    TestSystem();
+    ~TestSystem();
+    virtual void update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList, const vkrt::GlobalSingletons globalSingletons) override;
 };
 
 #endif

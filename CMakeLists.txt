@@ -12,8 +12,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Add engine directory as a library (glob sources, add library, etc)
 add_subdirectory(engine)
 
+# Glob sources
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/app/*.cpp")
+
 # Add executable
-add_executable(VulkanRaytracer app/main.cpp app/App.cpp)
+add_executable(VulkanRaytracer ${SRC_FILES})
+
+# Include headers in app/
+target_include_directories(VulkanRaytracer
+    PUBLIC "${CMAKE_SOURCE_DIR}/app"
+)
 
 # Link libraries
 target_link_libraries(VulkanRaytracer

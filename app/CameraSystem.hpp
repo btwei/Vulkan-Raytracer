@@ -9,7 +9,7 @@
  */
 class CameraSystem : public vkrt::System {
 public:
-    virtual void update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList) override;
+    virtual void update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList, const vkrt::GlobalSingletons globalSingletons) override;
 };
 
 #endif

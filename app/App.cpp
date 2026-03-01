@@ -2,6 +2,9 @@
 
 #include <filesystem>
 
+#include "CameraSystem.hpp"
+#include "TestSystem.hpp"
+
 App::App(int argc, char* argv[]) :
     _argc(argc),
     _argv(argv),
@@ -22,6 +25,9 @@ void App::run() {
     camera->addComponent<vkrt::CameraComponent>();
     vkrt::TransformComponent* cameraTransform = camera->addComponent<vkrt::TransformComponent>();
     cameraTransform->position = glm::vec3(0.0f, 0.0f, 10.0f);
+
+    std::shared_ptr<vkrt::System> testSystem = std::make_shared<TestSystem>();
+    _engine.getEntityManager()->registerSystem(testSystem);
 
     _engine.run();
 }
