@@ -23,7 +23,7 @@ namespace vkrt {
  * @brief Entity class for use with the ECS system
  * 
  * `Entity` acts as a container for a list of components. The ECS philosophy used
- * is that entities are containers, Components carry state, and Systems provide behavior.
+ * is that Entities are containers, Components carry state, and Systems provide behavior.
  */
 class Entity {
 public:

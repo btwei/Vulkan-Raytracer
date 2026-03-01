@@ -26,14 +26,14 @@ void Engine::init(const std::string& windowName, int width, int height) {
     _inputManager = std::make_unique<InputManager>(_window.get());
     _inputManager->init();
 
-    _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get());
+    _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get(), _inputManager.get());
     _entityManager->init();
 }
 
 void Engine::run() {
     while(!_window->getShouldClose()) {
         _inputManager->beginFrame();
-        
+
         _window->handleEvents();
 
         _entityManager->update();

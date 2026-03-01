@@ -2,7 +2,7 @@
 
 namespace vkrt {
     
-void RenderingSystem::update(std::vector<std::unique_ptr<Entity>>& entityList) {
+void RenderingSystem::update(std::vector<std::unique_ptr<Entity>>& entityList, const GlobalSingletons GlobalSingletons) {
 
     // For every mesh component that is active and not acquired, acquire it
 

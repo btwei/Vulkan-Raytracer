@@ -22,7 +22,7 @@ public:
     void destroy();
 
     AssetManager* getAssetManager() { return _assetManager.get(); }
-    EntityManager* getEntityManager() { return _entityManager.get(); }
+    IEntityManager* getEntityManager() { return _entityManager.get(); }
 
 private:
     int _argc;

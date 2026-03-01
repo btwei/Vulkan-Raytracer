@@ -11,7 +11,14 @@ void EntityManager::init() {
 }
 
 void EntityManager::update() {
-    renderingSystem.update(_entityList);
+    _globalSingletons.inputState = _inputManager->getInputState();
+
+    // Call every user-registered system
+    for(auto& system : _systemList) {
+        system->update(_entityList, _globalSingletons);
+    }
+
+    renderingSystem.update(_entityList, _globalSingletons);
 }
 
 Entity* EntityManager::createNewEntity(const std::string entityName) {
@@ -30,6 +37,10 @@ bool EntityManager::removeEntity(const std::string entityName) {
         }
     }
     return false;
+}
+
+void EntityManager::registerSystem(std::shared_ptr<System> system) {
+    _systemList.push_back(system);
 }
 
 } // namespace vkrt
