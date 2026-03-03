@@ -14,23 +14,32 @@ Engine::~Engine() {
 }
 
 void Engine::init(const std::string& windowName, int width, int height) {
-    _window = std::make_unique<Window>();
-    _window->open(windowName, width, height);
+    if(!_isInitialized) {
+        _window = std::make_unique<Window>();
+        _window->open(windowName, width, height);
 
-    _renderer = std::make_unique<Renderer>(_window.get());
-    _renderer->init();
+        _renderer = std::make_unique<Renderer>(_window.get());
+        _renderer->init();
 
-    _assetManager = std::make_unique<AssetManager>(_renderer.get());
-    _assetManager->init(_window->getBinaryPath());
+        _assetManager = std::make_unique<AssetManager>(_renderer.get());
+        _assetManager->init(_window->getBinaryPath());
 
-    _inputManager = std::make_unique<InputManager>(_window.get());
-    _inputManager->init();
+        _inputManager = std::make_unique<InputManager>(_window.get());
+        _inputManager->init();
 
-    _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get(), _inputManager.get());
-    _entityManager->init();
+        _entityManager = std::make_unique<EntityManager>(_renderer.get(), _assetManager.get(), _inputManager.get());
+        _entityManager->init();
+
+        _isInitialized = true;
+    }
 }
 
 void Engine::run() {
+    if(_isRunning || !_isInitialized) return;
+
+    _isRunning = true;
+
+    // Main engine loop
     while(!_window->getShouldClose()) {
         _inputManager->beginFrame();
 
