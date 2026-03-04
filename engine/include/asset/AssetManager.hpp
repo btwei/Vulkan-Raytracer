@@ -38,7 +38,7 @@ struct ImportResult {
  * @brief This class provides the engine exposed functions to import assets.
  */
 class IAssetManager {
-
+public:
     /**
      * @brief Imports the asset at the target filepath.
      * 
