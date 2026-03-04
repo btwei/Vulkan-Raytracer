@@ -11,7 +11,7 @@
 
 namespace vkrt {
     
-ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* assetManager) {
+ImportResult importGLTFWithTinyGLTF(const std::filesystem::path& filepath, AssetManager* assetManager) {
     ImportResult result;
     
     tinygltf::Model model;
@@ -34,7 +34,7 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
     {
         // Load all images
         for(const auto& image : model.images) {
-            AssetHandle<TextureAsset> textureHandle = assetManager->registerAsset(std::make_shared<TextureAsset>(image.name, image.image, VkExtent3D(image.width, image.height, 1), assetManager->getRenderer()));
+            AssetHandle<TextureAsset> textureHandle = assetManager->registerAsset(std::make_unique<TextureAsset>(image.name, image.image, VkExtent3D(image.width, image.height, 1), assetManager->getRenderer()));
             result.textureHandles.push_back(textureHandle);
         }
 
@@ -174,18 +174,18 @@ ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* ass
                     if(material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) info.armTexture = result.textureHandles[model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source];
                 }
 
-                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_shared<MaterialAsset>(mesh.name + "Material" + std::to_string(primitive.material), info));
+                AssetHandle<MaterialAsset> materialHandle = assetManager->registerAsset(std::make_unique<MaterialAsset>(mesh.name + "Material" + std::to_string(primitive.material), info));
                 result.materialHandles.push_back(materialHandle);
             }
             
-            AssetHandle<MeshAsset> meshHandle = assetManager->registerAsset(std::make_shared<MeshAsset>(mesh.name, vertices, indices, submeshes, assetManager->getRenderer()));
+            AssetHandle<MeshAsset> meshHandle = assetManager->registerAsset(std::make_unique<MeshAsset>(mesh.name, vertices, indices, submeshes, assetManager->getRenderer()));
             result.meshHandles.push_back(meshHandle);
 
             ModelAsset::ModelInfo info{};
             info.mesh = meshHandle;
             info.materials = result.materialHandles;
 
-            AssetHandle<ModelAsset> modelHandle = assetManager->registerAsset(std::make_shared<ModelAsset>(mesh.name, info));
+            AssetHandle<ModelAsset> modelHandle = assetManager->registerAsset(std::make_unique<ModelAsset>(mesh.name, info));
             result.modelHandles.push_back(modelHandle);
         }
     }

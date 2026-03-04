@@ -6,24 +6,27 @@
 
 namespace vkrt {
 
+class AssetManager;
+
 /**
  * @class AssetHandle
- * @brief AssetHandles are the user facing handles for Assets which are stored in the AssetManager
+ * @brief AssetHandles are the user facing handles for Assets which are stored in the AssetManager.
+ * 
+ * These are primarily created through use of the importAsset function in the AssetManager.
  */
 template<typename T>
 class AssetHandle {
-private:
-    std::string _assetId;
-    std::weak_ptr<T> _assetPtr;
 public:
     AssetHandle() {};
-    AssetHandle(const std::string& assetId, std::weak_ptr<T> assetPointer) : _assetId(assetId), _assetPtr(assetPointer) {};
-    AssetHandle(const AssetHandle& other) : _assetId(other._assetId), _assetPtr(other._assetPtr) { };
+    AssetHandle(const AssetHandle& other) : _assetId(other._assetId) {};
 
-
-    std::shared_ptr<T> get() { return _assetPtr.lock(); }
     const std::string& getId() { return _assetId; }
-    bool isValid() { return _assetPtr.expired(); }
+
+    friend class AssetManager; // Factory class for Asset Handles
+private:
+    std::string _assetId;
+
+    AssetHandle(const std::string& assetId) : _assetId(assetId) {};
 };
 
 } // namespace vkrt

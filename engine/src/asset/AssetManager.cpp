@@ -33,19 +33,19 @@ void AssetManager::init(const std::string& binaryPath) {
     uint32_t whiteData = glm::packUnorm4x8(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
     memcpy(textureData.data(), &whiteData, sizeof(whiteData));
 
-    registerAsset(std::make_shared<TextureAsset>("whiteTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
+    registerAsset(std::make_unique<TextureAsset>("whiteTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
 
     // Load a default grey texture
     uint32_t greyData = glm::packUnorm4x8(glm::vec4(0.66f, 0.66f, 0.66f, 1.0f));
     memcpy(textureData.data(), &greyData, sizeof(greyData));
 
-    registerAsset(std::make_shared<TextureAsset>("greyTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
+    registerAsset(std::make_unique<TextureAsset>("greyTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
 
     // Load a default black texture
     uint32_t blackData = glm::packUnorm4x8(glm::vec4(0.0f, 0.0f, 0.0f, 1));
     memcpy(textureData.data(), &blackData, sizeof(blackData));
 
-    registerAsset(std::make_shared<TextureAsset>("blackTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
+    registerAsset(std::make_unique<TextureAsset>("blackTexture", textureData, VkExtent3D(1, 1, 1), _renderer));
 
     // Load an error texture
     uint32_t magentaData = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
@@ -60,12 +60,20 @@ void AssetManager::init(const std::string& binaryPath) {
         }
     }
 
-    registerAsset(std::make_shared<TextureAsset>("errorCheckerboardTexture", textureData, VkExtent3D(16, 16, 1), _renderer));
+    registerAsset(std::make_unique<TextureAsset>("errorCheckerboardTexture", textureData, VkExtent3D(16, 16, 1), _renderer));
 }
 
 ImportResult AssetManager::importAsset(const std::filesystem::path& filepath) {
     if(filepath.extension() == ".gltf" || filepath.extension() == ".glb") {
-        return importGLTF(_binaryPath + filepath.string(), this);
+        return importGLTFWithTinyGLTF(_binaryPath + filepath.string(), this);
+    } else {
+        return ImportResult();
+    }
+}
+
+ImportResult AssetManager::importGLTF(const std::filesystem::path& filepath) {
+    if(filepath.extension() == ".gltf" || filepath.extension() == ".glb") {
+        return importGLTFWithTinyGLTF(_binaryPath + filepath.string(), this);
     } else {
         return ImportResult();
     }

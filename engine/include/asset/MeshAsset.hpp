@@ -26,10 +26,7 @@ public:
 
     MeshAsset(const std::string& assetId, const std::span<Vertex>& vertices, const std::span<uint32_t>& indices, std::vector<Submesh> meshRanges, Renderer* renderer);
     ~MeshAsset();
-protected:
-    virtual bool doLoad() override;
-    virtual bool doUnload() override;
-private:
+
     Renderer* _renderer;
     std::vector<Submesh> _submeshes;
 
@@ -38,6 +35,10 @@ private:
 
     GPUMeshBuffers _meshBuffers;
     BlasResources _blasResources;
+
+protected:
+    virtual bool doLoad() override;
+    virtual bool doUnload() override;
 };
 
 } // namespace vkrt

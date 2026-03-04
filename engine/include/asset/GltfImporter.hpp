@@ -5,7 +5,7 @@
 
 namespace vkrt {
 
-ImportResult importGLTF(const std::filesystem::path& filepath, AssetManager* assetManager);
+ImportResult importGLTFWithTinyGLTF(const std::filesystem::path& filepath, AssetManager* assetManager);
 
 } // namespace vkrt
 

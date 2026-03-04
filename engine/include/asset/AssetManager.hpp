@@ -6,6 +6,7 @@
 #include <string>
 #include <typeindex>
 #include <typeinfo>
+#include <type_traits>
 #include <unordered_map>
 
 #include "Asset.hpp"
@@ -20,6 +21,9 @@ class MeshAsset;
 class MaterialAsset;
 class TextureAsset;
 
+/**
+ * @brief ImportResults contain AssetHandles on a successful file import.
+ */
 struct ImportResult {
     bool success = false;
 
@@ -29,19 +33,90 @@ struct ImportResult {
     std::vector<AssetHandle<TextureAsset>> textureHandles;
 };
 
-class AssetManager {
+/**
+ * @class IAssetManager
+ * @brief This class provides the engine exposed functions to import assets.
+ */
+class IAssetManager {
+
+    /**
+     * @brief Imports the asset at the target filepath.
+     * 
+     * Parses the file extension to call the correct loading function. Filepaths
+     * must point to a resource relative to the assets/ folder.
+     * 
+     * @param[in] filepath The relative path to the asset file.
+     * @return Returns an ImportResult struct with all parsed handles.
+     * 
+     * @example importAsset("horse_statue_01_8k/horse_statue_01_8k.gltf")
+     */
+    virtual ImportResult importAsset(const std::filesystem::path& filepath) = 0;
+
+    /**
+     * @brief This function loads a GLTF file from the target filepath.
+     * 
+     * Loads the .gltf or .glb file from the target filepath relative to the assets/
+     * folder.
+     * 
+     * @param[in] filepath The relative path to the gltf file.
+     * @return Returns an ImportResult struct with all parsed handles.
+     * 
+     * @return This returns an ImportResult that is populated with AssetHandles
+     */
+    virtual ImportResult importGLTF(const std::filesystem::path& filepath) = 0;
+};
+
+/**
+ * @class AssetManager
+ * @brief This class contains the engine implementation of the AssetManager class.
+ * 
+ * This class is responsible for importing asset files into AssetHandles. Additionally,
+ * this class serves as the engine's internal interface for transitioning AssetHandle
+ * states to initialize, load, and unload assets.
+ */
+class AssetManager final : public IAssetManager {
+public:
+    AssetManager(Renderer* renderer);
+    ~AssetManager();
+
+    /**
+     * @brief Initializes the AssetManager class. 
+     * 
+     * Must be called before using the AssetManager. Initializes the binary filepath
+     * and default assets for use with engine and importing. The binary path 
+     */
+    void init(const std::string& binaryPath);
+
+    /**
+     * @brief Imports the asset at the target filepath by calling the correct import
+     * function.
+     * 
+     * @example importAsset("horse_statue_01_8k/horse_statue_01_8k.gltf")
+     */
+    ImportResult importAsset(const std::filesystem::path& filepath) override;
+
+    /**
+     * @brief Imports the .glb or .gltf asset at the target path.
+     */
+    ImportResult importGLTF(const std::filesystem::path& filepath) override;
+
+    Renderer* getRenderer() { return _renderer; }
+
+// More public functions afterwards due to templated code
 private:
+    /**
+     * For each registered asset, hold ownership of it and reference count it.
+     */
     struct AssetData {
-        std::shared_ptr<Asset> asset;
+        std::unique_ptr<Asset> asset;
         int refCount;
     };
 
     Renderer* _renderer;
     std::string _binaryPath;
 
+    // For every Asset type, store an unordered map of Assets of that kind
     std::unordered_map<std::type_index, std::unordered_map<std::string, AssetData>> assetDatas;
-
-    ImportResult loadGLTF(const std::filesystem::path& filepath);
 
     // Interal asset release method for use with pairs instead of handles
     bool releaseAsset(std::pair<std::type_index, std::string> pair) {
@@ -99,22 +174,56 @@ private:
     }
 
 public:
-    AssetManager(Renderer* renderer);
-    ~AssetManager();
-
     /**
-     * @brief Initializes the AssetManager class. Must be called before using the AssetManager.
-     * Initializes the binary filepath and default assets for use with engine and importing.
-     */
-    void init(const std::string& binaryPath);
-
-    /**
-     * @brief Imports the asset at the target filepath. Filepaths point to a resource in the assets/ folder.
+     * @brief Register an object derived from Asset to the Asset Manager.
      * 
-     * @example importAsset("horse_statue_01_8k/horse_statue_01_8k.gltf")
+     * On asset registration, the name of the asset may be changed if an asset
+     * already exists with the same name. The new name can be checked through the
+     * returned asset handle.
+     * 
+     * @param[in] asset An asset object derived from Asset class to be registered.
+     * @return An asset handle refering to the registered object.
      */
-    ImportResult importAsset(const std::filesystem::path& filepath);
+    template<typename T>
+    AssetHandle<T> registerAsset(std::unique_ptr<T> asset) {
+        // Check if T is derived from Asset
+        static_assert(std::is_base_of<Asset, T>::value, "Registered assets must derive from Asset class!");
+        std::unique_ptr<Asset> upcastedAsset = std::move(asset);
 
+        auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
+
+        // Attempt to place the asset in the asset manager
+        while(true) {
+            auto it = assetsOfTypeT.find(upcastedAsset->getId());
+            // No conflicting ID
+            if(it == assetsOfTypeT.end()) {
+                std::string id = upcastedAsset->getId();
+                assetsOfTypeT[upcastedAsset->getId()] = AssetData();
+                assetsOfTypeT[upcastedAsset->getId()].asset = std::move(upcastedAsset);
+
+                // Restore the type from Asset to type T
+                return AssetHandle<T>(id);
+            
+            // Must add a suffix to generate a unique ID
+            } else {
+                std::string newId;
+                std::regex r(R"(^(.*_)(\d+)$)");
+                std::smatch match;
+                if(std::regex_search(upcastedAsset->getId(), match, r)) {
+                    newId = match[1].str() + std::to_string(std::stoi(match[2].str())+1);
+                } else {
+                    newId = upcastedAsset->getId() + "_1";
+                }
+                upcastedAsset->setId(newId);
+            }
+        }
+    }
+
+    /**
+     * @brief Gets an AssetHandle<T> by ID.
+     * 
+     * Returns AssetHandle<T>() on failure.
+     */
     template<typename T>
     AssetHandle<T> getHandleById(const std::string& assetId) {
         auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
@@ -122,12 +231,15 @@ public:
 
         if(it != assetsOfTypeT.end()) {
             // Restore the type from asset to type T
-            return AssetHandle<T>(assetId, std::dynamic_pointer_cast<T>(it->second.asset));
+            return AssetHandle<T>(assetId);
         } else {
             return AssetHandle<T>();
         }
     }
 
+    /**
+     * @brief Returns true if an asset of ID and type T exist in the Asset Manager.
+     */
     template<typename T>
     bool hasAsset(const std::string& assetId) {
         auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
@@ -140,6 +252,9 @@ public:
         }
     }
 
+    /**
+     * @brief Returns a raw pointer to an asset if present.
+     */
     template<typename T>
     T* getAsset(const std::string& assetId) {
         auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
@@ -152,6 +267,9 @@ public:
         }
     }
 
+    /**
+     * @brief Acquires the specified asset and all of its dependencies.
+     */
     template<typename T>
     bool acquireAsset(AssetHandle<T> assetHandle) {
         // Find the asset
@@ -187,6 +305,9 @@ public:
         }
     }
 
+    /**
+     * @brief Releases the reference count on the asset and all of the asset's dependencies.
+     */
     template<typename T>
     bool releaseAsset(AssetHandle<T> assetHandle) {
         auto& refCountsForTypeT = assetDatas[std::type_index(typeid(T))];
@@ -206,42 +327,6 @@ public:
             return false;
         }
     }
-
-    template<typename T>
-    AssetHandle<T> registerAsset(std::shared_ptr<T> asset) {
-        std::shared_ptr<Asset> a = std::dynamic_pointer_cast<Asset>(asset);
-        if(!a) return AssetHandle<T>();
-
-        auto& assetsOfTypeT = assetDatas[std::type_index(typeid(T))];
-
-        // Attempt to place the asset in the asset manager
-        while(true) {
-            auto it = assetsOfTypeT.find(a->getId());
-            // No conflicting ID
-            if(it == assetsOfTypeT.end()) {
-                std::string id = a->getId();
-                assetsOfTypeT[a->getId()] = AssetData();
-                assetsOfTypeT[a->getId()].asset = std::move(a);
-
-                // Restore the type from Asset to type T
-                return AssetHandle<T>(id, std::dynamic_pointer_cast<T>(assetsOfTypeT[id].asset));
-            
-            // Must add a suffix to generate a unique ID
-            } else {
-                std::string newId;
-                std::regex r(R"(^(.*_)(\d+)$)");
-                std::smatch match;
-                if(std::regex_search(a->getId(), match, r)) {
-                    newId = match[1].str() + std::to_string(std::stoi(match[2].str())+1);
-                } else {
-                    newId = a->getId() + "_1";
-                }
-                a->setId(newId);
-            }
-        }
-    }
-
-    Renderer* getRenderer() { return _renderer; }
 };
 
 } // namespace vkrt
