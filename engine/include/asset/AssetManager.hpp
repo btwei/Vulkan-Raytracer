@@ -261,7 +261,7 @@ public:
         auto it = assetsOfTypeT.find(assetId);
 
         if(it != assetsOfTypeT.end()) {
-            return it->second.asset;
+            return static_cast<T*>(it->second.asset.get());
         } else {
             return nullptr;
         }
