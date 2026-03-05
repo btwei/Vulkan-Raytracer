@@ -57,6 +57,10 @@ struct PushConstants {
     glm::mat4 inverseProjectionMatrix;
 };
 
+/**
+ * @class Renderer
+ * @brief Interfaces with the GPU to handle rendering.
+ */
 class Renderer {
 public:
     Renderer(Window* window);
@@ -82,13 +86,13 @@ public:
     void enqueueBlasDestruction(BlasResources blasResources);
 
     uint32_t uploadMeshResources();
-    void freeMeshResources();
+    void freeMeshResources(uint32_t index);
     
     void setTLASBuild(std::vector<BlasInstance>&& instances);
     void setTLASUpdate(std::vector<BlasInstance>&& instances);
 
     void setViewMatrix(glm::mat4 viewMatrix);
-    void setProjectionMatrix(glm::mat4 projectionMatrix);
+    void setProjectionMatrix(float fov, float nearPlane, float farPlane);
 
 private:
     bool _isInitialized = false;
@@ -136,6 +140,9 @@ private:
     VkStridedDeviceAddressRegionKHR _hitRegion;
     VkStridedDeviceAddressRegionKHR _callableRegion;
 
+    float _fov = glm::radians(70.f);
+    float _nearPlane = 10000.f;
+    float _farPlane = 0.1f;
     PushConstants pcs;
 
     std::vector<BlasInstance> _tlasInstanceList;
@@ -157,11 +164,13 @@ private:
     void initShaderBindingTable();
     void initDrawImages();
     void resizeDrawImage();
+    void initInstanceBuffers();
 
     void writeDescriptorUpdates(VkImageView swapchainImageView);
     void raytraceScene(VkCommandBuffer cmdBuf);
     void handleResize();
     void handleTLASUpdate();
+    void refreshProjectionMatrix();
 
     FrameData& getCurrentFrame() { return _frameData[_frameCount % NUM_FRAMES_IN_FLIGHT]; }
     FrameData& getPreviousFrame() { return _frameData[(_frameCount - 1) % NUM_FRAMES_IN_FLIGHT]; }

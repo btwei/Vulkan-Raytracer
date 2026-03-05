@@ -30,6 +30,7 @@ void Renderer::init() {
     initRaytracingPipeline();
     initShaderBindingTable();
     initDrawImages();
+    initInstanceBuffers();
 }
 
 void Renderer::update() {
@@ -445,6 +446,20 @@ void Renderer::enqueueBlasDestruction(BlasResources blasResources) {
     });
 }
 
+/**
+ * @todo Create a new class to manage mesh buffers per frame in flight
+ */
+uint32_t Renderer::uploadMeshResources() {
+    // Temporary implementation for prototyping
+    vkDeviceWaitIdle(_device);
+
+    return 0;
+}
+
+void Renderer::freeMeshResources(uint32_t index) {
+
+}
+
 void Renderer::setTLASBuild(std::vector<BlasInstance>&& instances) {
     _tlasInstanceList = instances;
     _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
@@ -462,9 +477,19 @@ void Renderer::setViewMatrix(glm::mat4 viewMatrix) {
     pcs.inverseViewMatrix = glm::inverse(viewMatrix);
 }
 
-void Renderer::setProjectionMatrix(glm::mat4 projectionMatrix) {
-    pcs.projectionMatrix = projectionMatrix;
-    pcs.inverseProjectionMatrix = glm::inverse(projectionMatrix);
+void Renderer::setProjectionMatrix(float fov, float nearPlane, float farPlane) {
+    // Cache these values to regenerate the projection matrix on window resize
+    _fov = fov;
+    _nearPlane = nearPlane;
+    _farPlane = farPlane;
+
+    pcs.projectionMatrix = glm::perspective(fov, static_cast<float>(_swapchainExtent.width / _swapchainExtent.height), nearPlane, farPlane);
+    pcs.inverseProjectionMatrix = glm::inverse(pcs.projectionMatrix);
+}
+
+void Renderer::refreshProjectionMatrix() {
+    pcs.projectionMatrix = glm::perspective(_fov, static_cast<float>(_swapchainExtent.width / _swapchainExtent.height), _nearPlane, _farPlane);
+    pcs.inverseProjectionMatrix = glm::inverse(pcs.projectionMatrix);
 }
 
 void Renderer::initVulkanBootstrap() {
@@ -761,8 +786,7 @@ void Renderer::initTransforms() {
     glm::mat4 viewMatrix = glm::mat4(1);
     setViewMatrix(viewMatrix);
 
-    glm::mat4 projectionMatrix = glm::perspective(glm::radians(70.f), (float)_window->getFramebufferWidth() / (float)_window->getFramebufferHeight(), 10000.f, 0.1f);
-    setProjectionMatrix(projectionMatrix);
+    setProjectionMatrix(glm::radians(70.f), 10000.f, 0.1f);
 }
 
 void Renderer::initDescriptorSets() {
@@ -960,6 +984,10 @@ void Renderer::resizeDrawImage() {
     }
 }
 
+void Renderer::initInstanceBuffers() {
+
+}
+
 void Renderer::writeDescriptorUpdates(VkImageView swapchainImageView) {
     // Update per frame descriptors
     // Practically speaking.. these must be updated because frames in flight != swapchain count necessarily
@@ -1015,6 +1043,7 @@ void Renderer::handleResize() {
     // Process resize if necessary
     if(_shouldResize) {
         resizeSwapchainResources();
+        refreshProjectionMatrix();
         
         for(FrameData& data : _frameData) { data._drawImageShouldResize = true; }
 
