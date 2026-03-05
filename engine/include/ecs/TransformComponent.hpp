@@ -14,7 +14,7 @@ public:
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
 
-    glm::mat4 cachedTransform = glm::mat4(1.0f);
+    glm::mat4 cachedTransform = glm::mat4(1.0f); // No need to change, rendering system will regenerate this
     bool isDirty = true; // mark dirty when changed, rendering system will mark clean
 };
 

@@ -18,7 +18,7 @@ void EntityManager::update() {
         system->update(_entityList, _globalSingletons);
     }
 
-    renderingSystem.update(_entityList, _globalSingletons);
+    _renderingSystem.update(_entityList, _globalSingletons);
 }
 
 Entity* EntityManager::createNewEntity(const std::string entityName) {

@@ -47,10 +47,12 @@ public:
     EntityManager(Renderer* renderer, AssetManager* assetManager, InputManager* inputManager)
     : _renderer(renderer)
     , _assetManager(assetManager)
-    , _inputManager(inputManager) { };
+    , _inputManager(inputManager)
+    , _renderingSystem(assetManager, renderer) { };
     ~EntityManager();
 
-    EntityManager& operator=(const EntityManager& other) = delete;
+    EntityManager(const EntityManager&) = delete;
+    EntityManager& operator=(const EntityManager&) = delete;
 
     /**
      * @brief Initializes engine owned systems
@@ -75,7 +77,7 @@ private:
     GlobalSingletons _globalSingletons;
 
     // Engine controlled systems
-    RenderingSystem renderingSystem;
+    RenderingSystem _renderingSystem;
 
     std::vector<std::unique_ptr<Entity>> _entityList;
     std::vector<std::shared_ptr<System>> _systemList;

@@ -6,6 +6,7 @@
 #include "MaterialAsset.hpp"
 #include "MeshAsset.hpp"
 #include "ModelAsset.hpp"
+#include "VulkanTypes.hpp"
 
 namespace vkrt {
 
@@ -23,13 +24,9 @@ namespace vkrt {
  */
 class MeshComponent : public Component {
 public:
-    MeshComponent(AssetHandle<ModelAsset> modelHandle) {
-        if(modelHandle.isValid()) {
-            std::shared_ptr<ModelAsset> ptr = modelHandle.get();
-            meshHandle = ptr->getMeshHandle();
-            materialHandles = ptr->getMaterials();
-        }
-    }
+    MeshComponent(AssetHandle<ModelAsset> modelHandle) : modelHandle(modelHandle) {}
+
+    AssetHandle<ModelAsset> modelHandle;
 
     AssetHandle<MeshAsset> meshHandle;
     std::vector<AssetHandle<MaterialAsset>> materialHandles;
@@ -38,6 +35,8 @@ public:
      * @brief tracks the acquired/released status of the handles in the assetManager
      */
     bool isAcquired = false;
+    bool isDirty = true;
+    BlasInstance cachedInstance;
 };
 
 } // namespace vkrt

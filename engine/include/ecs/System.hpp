@@ -13,7 +13,7 @@ namespace vkrt {
 class System {
 public:
     virtual ~System() = default;
-    virtual void update(std::vector<std::unique_ptr<Entity>>& entityList, const GlobalSingletons globalSingletons) = 0;
+    virtual void update(std::vector<std::unique_ptr<Entity>>& entityList, GlobalSingletons globalSingletons) = 0;
 };
 
 } // namespace vkrt
