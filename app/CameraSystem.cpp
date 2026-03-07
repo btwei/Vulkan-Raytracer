@@ -4,6 +4,19 @@
 #include "TransformComponent.hpp"
 
 void CameraSystem::update(std::vector<std::unique_ptr<vkrt::Entity>>& entityList, vkrt::GlobalSingletons globalSingletons) {
+    // If no active camera, then set the first one found to active
+    if(globalSingletons.activeCameraEntity == nullptr) {
+        for(std::unique_ptr<vkrt::Entity>& entity : entityList) {
+            vkrt::CameraComponent* cameraComponent = entity->getComponent<vkrt::CameraComponent>();
+
+            if(cameraComponent) {
+                globalSingletons.activeCameraEntity = entity.get();
+                break;
+            }
+        }
+    }
+    
+    // Use WASD to move the camera transform
     if(globalSingletons.activeCameraEntity != nullptr) {
         bool active = globalSingletons.activeCameraEntity->isActive();
         vkrt::CameraComponent* cameraComponent = globalSingletons.activeCameraEntity->getComponent<vkrt::CameraComponent>();

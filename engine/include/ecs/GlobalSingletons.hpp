@@ -11,7 +11,7 @@ namespace vkrt {
  */
 struct GlobalSingletons {
     InputState inputState;
-    Entity* activeCameraEntity;
+    Entity* activeCameraEntity = nullptr;
 };
 
 } // namespace vkrt
