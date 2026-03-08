@@ -395,13 +395,13 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
     blasBuildGeometryInfo.pGeometries = &blasGeometry;
 
     uint32_t maxPrimitiveCount = 1;
-    VkAccelerationStructureBuildSizesInfoKHR blasBuildSizes;
+    VkAccelerationStructureBuildSizesInfoKHR blasBuildSizes{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
     vkGetAccelerationStructureBuildSizesKHR(_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &blasBuildGeometryInfo, &maxPrimitiveCount, &blasBuildSizes);
 
     blasResources.blasBuffer = createBuffer(blasBuildSizes.accelerationStructureSize,
                                             VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
-    AllocatedBuffer scratchBuffer = createBuffer(blasBuildSizes.buildScratchSize, 
-                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    AllocatedBuffer scratchBuffer = createBuffer(blasBuildSizes.buildScratchSize,
+                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
     VkBufferDeviceAddressInfo scratchAddressInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = scratchBuffer.buffer };
     VkDeviceAddress scratchAddress = vkGetBufferDeviceAddress(_device, &scratchAddressInfo); 
