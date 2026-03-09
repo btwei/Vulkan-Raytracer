@@ -26,7 +26,9 @@ public:
     void cleanupPerFrame();
 
     VkExtent2D extent;
+    VkColorSpaceKHR colorSpace;
     VkFormat format;
+    VkPresentModeKHR presentMode;
     VkSwapchainKHR swapchain;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
@@ -52,6 +54,10 @@ private:
     VkFence* _pLatestPresentFence = nullptr;
     std::vector<VkFence> _presentFences;
     std::vector<OldSwapchainSnapshot> _oldResources;
+
+    void setProperExtent(const VkSurfaceCapabilitiesKHR& surfaceCaps, VkExtent2D windowExtent);
+    void setBestFormat();
+    void setBestPresentMode();
 
     void createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
     void destroySwapchain();

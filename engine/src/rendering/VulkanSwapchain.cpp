@@ -89,53 +89,59 @@ void VulkanSwapchain::cleanupPerFrame() {
     });
 }
 
+void VulkanSwapchain::setProperExtent(const VkSurfaceCapabilitiesKHR& surfaceCaps, VkExtent2D windowExtent) {
+    // Select the actual swapchain extent. 
+    if(surfaceCaps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        extent = surfaceCaps.currentExtent;
+    } else {
+        extent = VkExtent2D{std::clamp<uint32_t>(windowExtent.width, surfaceCaps.minImageExtent.width, surfaceCaps.maxImageExtent.width),
+                            std::clamp<uint32_t>(windowExtent.height, surfaceCaps.minImageExtent.height, surfaceCaps.maxImageExtent.height)};
+    }
+}
+
+void VulkanSwapchain::setBestFormat() {
+    uint32_t surfaceFormatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, nullptr);
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
+
+    format = surfaceFormats[0].format;
+    colorSpace = surfaceFormats[0].colorSpace;
+    for(const auto& surfaceFormat : surfaceFormats) {
+        if(surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            format = surfaceFormat.format;
+            colorSpace = surfaceFormat.colorSpace;
+            break;
+        }
+    } 
+}
+
+void VulkanSwapchain::setBestPresentMode() {
+    presentMode = VK_PRESENT_MODE_FIFO_KHR; // Always available
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, nullptr);
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, presentModes.data());
+
+    for(const auto& mode : presentModes) {
+        if(mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+        }
+    }
+}
+
 void VulkanSwapchain::createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR oldSwapchain /* = VK_NULL_HANDLE */) {
     VkSurfaceCapabilitiesKHR surfaceCaps;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physicalDevice, _surface, &surfaceCaps);
 
     // Select the actual swapchain extent. 
-    {
-        if(surfaceCaps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-            extent = surfaceCaps.currentExtent;
-        } else {
-            extent = VkExtent2D{std::clamp<uint32_t>(windowExtent.width, surfaceCaps.minImageExtent.width, surfaceCaps.maxImageExtent.width),
-                                std::clamp<uint32_t>(windowExtent.height, surfaceCaps.minImageExtent.height, surfaceCaps.maxImageExtent.height)};
-        }
-    }
+    setProperExtent(surfaceCaps, windowExtent);
 
     // Select the best available swapchain format
-    VkColorSpaceKHR swapchainColorSpace;
-    {
-        uint32_t surfaceFormatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, nullptr);
-        std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
-
-        format = surfaceFormats[0].format;
-        swapchainColorSpace = surfaceFormats[0].colorSpace;
-        for(const auto& surfaceFormat : surfaceFormats) {
-            if(surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                format = surfaceFormat.format;
-                swapchainColorSpace = surfaceFormat.colorSpace;
-                break;
-            }
-        } 
-    }
+    setBestFormat();
 
     // Select the best available presentation mode
-    VkPresentModeKHR selectedPresentMode = VK_PRESENT_MODE_FIFO_KHR; // Always available
-    {
-        uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, nullptr);
-        std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, presentModes.data());
-
-        for(const auto& presentMode : presentModes) {
-            if(presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                selectedPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            }
-        }
-    }
+    setBestPresentMode();
 
     // Set image count to the minimum we want, then cap it to the max allowed
     uint32_t imageCount = std::max( 3u, surfaceCaps.minImageCount);
@@ -146,14 +152,14 @@ void VulkanSwapchain::createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR ol
     swapchainInfo.surface = _surface;
     swapchainInfo.minImageCount = imageCount;
     swapchainInfo.imageFormat = format;
-    swapchainInfo.imageColorSpace = swapchainColorSpace;
+    swapchainInfo.imageColorSpace = colorSpace;
     swapchainInfo.imageExtent = extent;
     swapchainInfo.imageArrayLayers = 1;
     swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapchainInfo.preTransform = surfaceCaps.currentTransform;
     swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainInfo.presentMode = selectedPresentMode;
+    swapchainInfo.presentMode = presentMode;
     swapchainInfo.clipped = true;
 
     uint32_t queueFamilyIndices[] = {_graphicsQueueFamilyIndex, _presentQueueFamilyIndex};
