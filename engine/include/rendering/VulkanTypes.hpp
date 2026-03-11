@@ -36,6 +36,17 @@ struct AllocatedBuffer {
     VmaAllocationInfo info;
 };
 
+struct DeviceContext {
+    VkInstance instance;
+    VkPhysicalDevice physicalDevice;
+    VkDevice device;
+
+    VkQueue graphicsQueue;
+    uint32_t graphicsQueueFamilyIndex;
+    VkQueue presentQueue;
+    uint32_t presentQueueFamilyIndex;
+};
+
 struct Vertex {
     glm::vec3 position;
     float texCoord0_u;

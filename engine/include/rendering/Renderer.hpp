@@ -2,6 +2,7 @@
 #define VKRT_RENDERER_HPP
 
 #include <functional>
+#include <optional>
 #include <queue>
 
 #include <volk.h>
@@ -10,6 +11,7 @@
 
 #include "SceneManager.hpp"
 #include "VulkanDescriptors.hpp"
+#include "VulkanSwapchain.hpp"
 #include "VulkanTypes.hpp"
 #include "Window.hpp"
 
@@ -112,14 +114,7 @@ private:
     VkQueue _presentQueue;
     uint32_t _presentQueueFamilyIndex;
 
-    VkExtent2D _swapchainExtent;
-    VkFormat _swapchainFormat;
-    VkSwapchainKHR _swapchain;
-    std::vector<VkImage> _swapchainImages;
-    std::vector<VkImageView> _swapchainImageViews;
-    std::vector<VkSemaphore> _swapchainRenderToPresentSemaphores;
-    VkFence* _pLatestPresentFence;
-    std::vector<VkFence> _swapchainPresentFences;
+    std::optional<VulkanSwapchain> _vulkanSwapchain;
 
     VkCommandPool _immediateCommandPool;
     VkCommandBuffer _immediateCommandBuffer;
@@ -152,8 +147,6 @@ private:
     VmaAllocator _allocator;
 
     void initVulkanBootstrap();
-    void createSwapchainResources(VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
-    void resizeSwapchainResources();
     void initCommandResources();
     void initSyncResources();
     void initVMA();

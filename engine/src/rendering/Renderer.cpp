@@ -20,7 +20,24 @@ Renderer::~Renderer() {
 
 void Renderer::init() {
     initVulkanBootstrap();
-    createSwapchainResources();
+
+    // Create vulkanswapchain
+    DeviceContext deviceCtx{}; // Will likely move this into main Renderer class soon
+    deviceCtx.device = _device;
+    deviceCtx.graphicsQueue = _graphicsQueue;
+    deviceCtx.graphicsQueueFamilyIndex = _graphicsQueueFamilyIndex;
+    deviceCtx.instance = _instance;
+    deviceCtx.physicalDevice = _physicalDevice;
+    deviceCtx.presentQueue = _presentQueue;
+    deviceCtx.presentQueueFamilyIndex = _presentQueueFamilyIndex;
+
+    VulkanSwapchainInfo swapchainInfo{};
+    swapchainInfo.surface = _surface;
+    swapchainInfo.extent = VkExtent2D(_window->getFramebufferWidth(),
+                                      _window->getFramebufferHeight());
+
+    _vulkanSwapchain.emplace(deviceCtx, swapchainInfo);
+
     initCommandResources();
     initSyncResources();
     initVMA();
@@ -42,7 +59,7 @@ void Renderer::update() {
 
     // Acquire swapchain image
     uint32_t swapchainImageIndex;
-    VkResult imageAcquireResult = vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, getCurrentFrame()._acquireToRenderSemaphore, VK_NULL_HANDLE, &swapchainImageIndex);
+    VkResult imageAcquireResult = vkAcquireNextImageKHR(_device, _vulkanSwapchain->swapchain, 1'000'000'000, getCurrentFrame()._acquireToRenderSemaphore, VK_NULL_HANDLE, &swapchainImageIndex);
     if(imageAcquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         _shouldResize = true;
         return;
@@ -56,7 +73,7 @@ void Renderer::update() {
 
     handleTLASUpdate();
 
-    writeDescriptorUpdates(_swapchainImageViews[swapchainImageIndex]);
+    writeDescriptorUpdates(_vulkanSwapchain->imageViews[swapchainImageIndex]);
 
     // Do rendering
     VkCommandBuffer cmdBuf = getCurrentFrame()._mainCommandBuffer;
@@ -66,7 +83,7 @@ void Renderer::update() {
     VkCommandBufferBeginInfo beginInfo = vkrt::init::defaultCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
-        vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
+        vkrt::utils::defaultImageTransition(cmdBuf, _vulkanSwapchain->images[swapchainImageIndex],
                                             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                             0, VK_ACCESS_TRANSFER_WRITE_BIT,
                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -99,13 +116,13 @@ void Renderer::update() {
         blit.dstSubresource.layerCount = 1;
         blit.dstSubresource.mipLevel = 0;
 
-        blit.dstOffsets[1].x = _swapchainExtent.width;
-        blit.dstOffsets[1].y = _swapchainExtent.height;
+        blit.dstOffsets[1].x = _vulkanSwapchain->extent.width;
+        blit.dstOffsets[1].y = _vulkanSwapchain->extent.height;
         blit.dstOffsets[1].z = 1;
 
-        vkCmdBlitImage(cmdBuf, getCurrentFrame()._drawImage.image, VK_IMAGE_LAYOUT_GENERAL, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+        vkCmdBlitImage(cmdBuf, getCurrentFrame()._drawImage.image, VK_IMAGE_LAYOUT_GENERAL, _vulkanSwapchain->images[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
 
-        vkrt::utils::defaultImageTransition(cmdBuf, _swapchainImages[swapchainImageIndex],
+        vkrt::utils::defaultImageTransition(cmdBuf, _vulkanSwapchain->images[swapchainImageIndex],
                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                             VK_ACCESS_TRANSFER_WRITE_BIT, 0,
                                             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -114,7 +131,7 @@ void Renderer::update() {
     VK_REQUIRE_SUCCESS(vkEndCommandBuffer(cmdBuf));
 
     std::vector<VkCommandBuffer> cmdBufs = {cmdBuf};
-    std::vector<VkSemaphore> signalSemaphores = {_swapchainRenderToPresentSemaphores[swapchainImageIndex]};
+    std::vector<VkSemaphore> signalSemaphores = {_vulkanSwapchain->swapchainRenderToPresentSemaphores[swapchainImageIndex]};
     std::vector<VkSemaphore> waitSemaphores = {getCurrentFrame()._acquireToRenderSemaphore};
     std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 
@@ -122,38 +139,17 @@ void Renderer::update() {
     VK_REQUIRE_SUCCESS(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, getCurrentFrame()._renderFence));
 
     VkPresentInfoKHR presentInfo{ .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-    presentInfo.pSwapchains = &_swapchain;
+    presentInfo.pSwapchains = &_vulkanSwapchain->swapchain;
     presentInfo.swapchainCount = 1;
 
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &_swapchainRenderToPresentSemaphores[swapchainImageIndex];
+    presentInfo.pWaitSemaphores = &_vulkanSwapchain->swapchainRenderToPresentSemaphores[swapchainImageIndex];
 
     presentInfo.pImageIndices = &swapchainImageIndex;
 
     // Use VkSwapchainPresentFence to track whether the current swapchain image is done being presented
-    VkSwapchainPresentFenceInfoKHR presentFenceInfo{ .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR };
+    VkSwapchainPresentFenceInfoKHR presentFenceInfo = _vulkanSwapchain->getPresentFenceInfo();
     presentInfo.pNext = &presentFenceInfo;
-    presentFenceInfo.swapchainCount = 1;
-
-    // Select a free fence; we don't want to block
-    // Note that _pLatestPresentFence will always be valid when used during swapchain resizes by updating the pointer immediately after any possible vector resize
-    VkFence* pPresentFence = nullptr;
-    for(VkFence& fence : _swapchainPresentFences) {
-        if(vkGetFenceStatus(_device, fence) == VK_SUCCESS) {
-            vkResetFences(_device, 1, &fence);
-            pPresentFence = &fence;
-            _pLatestPresentFence = &fence;
-            break;
-        }
-    }
-    if(pPresentFence == nullptr) {
-        VkFence& newFence = _swapchainPresentFences.emplace_back();
-        VkFenceCreateInfo fenceInfo = init::defaultFenceInfo();
-        vkCreateFence(_device, &fenceInfo, nullptr, &newFence);
-        pPresentFence = &newFence;
-        _pLatestPresentFence = &newFence;
-    }
-    presentFenceInfo.pFences = pPresentFence;
 
     // Submit for presentation
     VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
@@ -172,11 +168,6 @@ void Renderer::cleanup() {
 
         vkDestroyPipeline(_device, _raytracingPipeline, nullptr);
         vkDestroyPipelineLayout(_device, _raytracingPipelineLayout, nullptr);
-
-        // Cleanup dynamically created present fences
-        for(VkFence& fence : _swapchainPresentFences) {
-            vkDestroyFence(_device, fence, nullptr);
-        }
 
         // Cleanup frameData
         for(auto& data : _frameData) {
@@ -199,12 +190,7 @@ void Renderer::cleanup() {
 
         vmaDestroyAllocator(_allocator);
 
-        // Cleanup current swapchain resources
-        for(int i=0; i < _swapchainImages.size(); i++) {
-            vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
-            vkDestroySemaphore(_device, _swapchainRenderToPresentSemaphores[i], nullptr);
-        }
-        vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+        _vulkanSwapchain.reset();
 
         // Cleanup core Vulkan objects
         vkDestroyDevice(_device, nullptr);
@@ -483,12 +469,12 @@ void Renderer::setProjectionMatrix(float fov, float nearPlane, float farPlane) {
     _nearPlane = nearPlane;
     _farPlane = farPlane;
 
-    pcs.projectionMatrix = glm::perspective(fov, static_cast<float>(_swapchainExtent.width / _swapchainExtent.height), nearPlane, farPlane);
+    pcs.projectionMatrix = glm::perspective(fov, static_cast<float>(_vulkanSwapchain->extent.width / _vulkanSwapchain->extent.height), nearPlane, farPlane);
     pcs.inverseProjectionMatrix = glm::inverse(pcs.projectionMatrix);
 }
 
 void Renderer::refreshProjectionMatrix() {
-    pcs.projectionMatrix = glm::perspective(_fov, static_cast<float>(_swapchainExtent.width / _swapchainExtent.height), _nearPlane, _farPlane);
+    pcs.projectionMatrix = glm::perspective(_fov, static_cast<float>(_vulkanSwapchain->extent.width / _vulkanSwapchain->extent.height), _nearPlane, _farPlane);
     pcs.inverseProjectionMatrix = glm::inverse(pcs.projectionMatrix);
 }
 
@@ -576,154 +562,6 @@ void Renderer::initVulkanBootstrap() {
     _graphicsQueueFamilyIndex = device_ret.value().get_queue_index(vkb::QueueType::graphics).value();
     _presentQueue = device_ret.value().get_queue(vkb::QueueType::present).value();
     _presentQueueFamilyIndex = device_ret.value().get_queue_index(vkb::QueueType::present).value();
-}
-
-void Renderer::createSwapchainResources(VkSwapchainKHR oldSwapchain /* = VK_NULL_HANDLE */) {
-    VkSurfaceCapabilitiesKHR surfaceCaps;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physicalDevice, _surface, &surfaceCaps);
-
-    // Select the actual swapchain extent. 
-    {
-        if(surfaceCaps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-            _swapchainExtent = surfaceCaps.currentExtent;
-        } else {
-            _swapchainExtent = VkExtent2D{std::clamp<uint32_t>(_window->getFramebufferWidth(), surfaceCaps.minImageExtent.width, surfaceCaps.maxImageExtent.width),
-                                          std::clamp<uint32_t>(_window->getFramebufferHeight(), surfaceCaps.minImageExtent.height, surfaceCaps.maxImageExtent.height)};
-        }
-    }
-
-    // Select the best available swapchain format
-    VkColorSpaceKHR swapchainColorSpace;
-    {
-        uint32_t surfaceFormatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, nullptr);
-        std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, surfaceFormats.data());
-
-        _swapchainFormat = surfaceFormats[0].format;
-        swapchainColorSpace = surfaceFormats[0].colorSpace;
-        for(const auto& format : surfaceFormats) {
-            if(format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                _swapchainFormat = format.format;
-                swapchainColorSpace = format.colorSpace;
-                break;
-            }
-        } 
-    }
-
-    // Select the best available presentation mode
-    VkPresentModeKHR selectedPresentMode = VK_PRESENT_MODE_FIFO_KHR; // Always available
-    {
-        uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, nullptr);
-        std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, presentModes.data());
-
-        for(const auto& presentMode : presentModes) {
-            if(presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                selectedPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            }
-        }
-    }
-
-    // Set image count to the minimum we want, then cap it to the max allowed
-    uint32_t imageCount = std::max( 3u, surfaceCaps.minImageCount);
-    imageCount = ( surfaceCaps.maxImageCount > 0 && imageCount > surfaceCaps.maxImageCount) ? surfaceCaps.maxImageCount : imageCount;
-
-    VkSwapchainCreateInfoKHR swapchainInfo{ .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-    swapchainInfo.oldSwapchain = oldSwapchain;
-    swapchainInfo.surface = _surface;
-    swapchainInfo.minImageCount = imageCount;
-    swapchainInfo.imageFormat = _swapchainFormat;
-    swapchainInfo.imageColorSpace = swapchainColorSpace;
-    swapchainInfo.imageExtent = _swapchainExtent;
-    swapchainInfo.imageArrayLayers = 1;
-    swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                               VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    swapchainInfo.preTransform = surfaceCaps.currentTransform;
-    swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainInfo.presentMode = selectedPresentMode;
-    swapchainInfo.clipped = true;
-
-    uint32_t queueFamilyIndices[] = {_graphicsQueueFamilyIndex, _presentQueueFamilyIndex};
-    if(_graphicsQueueFamilyIndex != _presentQueueFamilyIndex) {
-        swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        swapchainInfo.queueFamilyIndexCount = 2;
-        swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;
-    } else {
-        swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    if(vkCreateSwapchainKHR(_device, &swapchainInfo, nullptr, &_swapchain) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Vulkan swapchain!");
-    }
-
-    uint32_t swapchainImageCount;
-    vkGetSwapchainImagesKHR(_device, _swapchain, &swapchainImageCount, nullptr);
-    _swapchainImages.resize(swapchainImageCount);
-    vkGetSwapchainImagesKHR(_device, _swapchain, &swapchainImageCount, _swapchainImages.data());
-
-    _swapchainImageViews.clear();
-    for(int i=0; i<swapchainImageCount; i++) {
-        VkImageViewCreateInfo imageViewInfo = init::defaultImageViewInfo(_swapchainImages[i], _swapchainFormat);
-        VkImageView imageView;
-        if(vkCreateImageView(_device, &imageViewInfo, nullptr, &imageView) != VK_SUCCESS) throw std::runtime_error("Failed to create Vulkan swapchain image view!");
-        _swapchainImageViews.push_back(imageView);
-    }
-
-    // Create semaphores to guard the swapchain images
-    // - the vector containing them must be the same size as the swapchain image count
-    _swapchainRenderToPresentSemaphores.resize(_swapchainImages.size());
-    for(int i = 0; i < _swapchainImages.size(); i++) {
-        VkSemaphoreCreateInfo semaphoreInfo = init::defaultSemaphoreInfo();
-        VK_REQUIRE_SUCCESS(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_swapchainRenderToPresentSemaphores[i]));
-    }
-}
-
-void Renderer::resizeSwapchainResources() {
-    // The key to smooth resizing is to not call vkWaitDevice and instead push these to be destroyed later
-    // If not the first frame, push resources into a destruction queue
-    if(_pLatestPresentFence != nullptr) {
-        getCurrentFrame()._deletionQueue.pushFunction([=,
-                                                       _device = _device,
-                                                       latestPresentFence = *_pLatestPresentFence,
-                                                       imageViews = _swapchainImageViews,
-                                                       semaphores = _swapchainRenderToPresentSemaphores,
-                                                       _swapchain = _swapchain]() {
-                                                    
-            // Check the present fence associated with the swapchain resource
-            if(vkGetFenceStatus(_device, latestPresentFence) == VK_SUCCESS) {
-                // If true, cleanup all associated resources
-                for(int i = 0; i<imageViews.size(); i++) {
-                    vkDestroyImageView(_device, imageViews[i], nullptr);
-                    vkDestroySemaphore(_device, semaphores[i], nullptr);
-                }
-                vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-
-                vkDestroyFence(_device, latestPresentFence, nullptr);
-                return true;
-            }
-            // Otherwise, return false
-            return false;
-        });
-
-        // Then replace the present fence that we took out
-        VkFenceCreateInfo fenceInfo = vkrt::init::defaultFenceInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-        vkCreateFence(_device, &fenceInfo, nullptr, _pLatestPresentFence);
-
-    } else {
-        // A recreation was requested before the first frame; Destroy resources immediately
-        for(int i = 0; i<_swapchainImageViews.size(); i++) {
-            vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
-            vkDestroySemaphore(_device, _swapchainRenderToPresentSemaphores[i], nullptr);
-        }
-        vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-
-        vkDestroyFence(_device, *_pLatestPresentFence, nullptr);
-    }
-
-    // And create new swapchain resources -- that straight up overwrite the old values
-    createSwapchainResources(_swapchain);
 }
 
 // Initialize command pools and persistant command buffers that are used for immediate commands and per frame in flight
@@ -951,7 +789,7 @@ void Renderer::initShaderBindingTable() {
 
 void Renderer::initDrawImages() {
     for(FrameData& data : _frameData) {
-        data._drawImage = createImage(VkExtent3D(_swapchainExtent.width, _swapchainExtent.height, 1),
+        data._drawImage = createImage(VkExtent3D(_vulkanSwapchain->extent.width, _vulkanSwapchain->extent.height, 1),
                                      VK_FORMAT_R16G16B16A16_SFLOAT,
                                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         
@@ -968,7 +806,7 @@ void Renderer::initDrawImages() {
 void Renderer::resizeDrawImage() {
     if(getCurrentFrame()._drawImageShouldResize) {
         destroyImage(getCurrentFrame()._drawImage);
-        getCurrentFrame()._drawImage = createImage(VkExtent3D(_swapchainExtent.width, _swapchainExtent.height, 1),
+        getCurrentFrame()._drawImage = createImage(VkExtent3D(_vulkanSwapchain->extent.width, _vulkanSwapchain->extent.height, 1),
                                                    VK_FORMAT_R16G16B16A16_SFLOAT,
                                                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
@@ -1033,7 +871,7 @@ void Renderer::raytraceScene(VkCommandBuffer cmdBuf) {
     vkCmdPushConstants(cmdBuf, _raytracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(PushConstants), &pcs);
 
     // Ray trace
-    vkCmdTraceRaysKHR(cmdBuf, &_raygenRegion, &_missRegion, &_hitRegion, &_callableRegion, _swapchainExtent.width, _swapchainExtent.height, 1);
+    vkCmdTraceRaysKHR(cmdBuf, &_raygenRegion, &_missRegion, &_hitRegion, &_callableRegion, _vulkanSwapchain->extent.width, _vulkanSwapchain->extent.height, 1);
 }
 
 void Renderer::handleResize() {
@@ -1042,7 +880,11 @@ void Renderer::handleResize() {
 
     // Process resize if necessary
     if(_shouldResize) {
-        resizeSwapchainResources();
+        // Recreate the swapchain
+        VkExtent2D windowExtent = {static_cast<unsigned int>(_window->getFramebufferWidth()),
+                                   static_cast<unsigned int>(_window->getFramebufferHeight())};
+        _vulkanSwapchain->resize(windowExtent);
+
         refreshProjectionMatrix();
         
         for(FrameData& data : _frameData) { data._drawImageShouldResize = true; }
