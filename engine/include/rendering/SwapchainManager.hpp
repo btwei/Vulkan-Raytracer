@@ -1,25 +1,23 @@
-#ifndef VKRT_VULKANSWAPCHAIN_HPP
-#define VKRT_VULKANSWAPCHAIN_HPP
+#ifndef VKRT_SWAPCHAINMANAGER_HPP
+#define VKRT_SWAPCHAINMANAGER_HPP
 
-#include <VulkanTypes.hpp>
+#include <vector>
+
+#include "VulkanContext.hpp"
+#include "VulkanTypes.hpp"
 
 namespace vkrt {
 
-struct VulkanSwapchainInfo {
-    VkSurfaceKHR surface;
-    VkExtent2D extent;
-};
-
 /**
- * @class VulkanSwapchain
+ * @class SwapchainManager
  * @brief Manages swapchain objects and handles smooth swapchain resizing.
  * 
  * Uses RAII principles. 
  */
-class VulkanSwapchain {
+class SwapchainManager {
 public:
-    VulkanSwapchain(const DeviceContext& ctx, const VulkanSwapchainInfo& info);
-    ~VulkanSwapchain();
+    SwapchainManager(const VulkanContext& ctx, VkExtent2D windowExtent);
+    ~SwapchainManager();
 
     void resize(VkExtent2D windowExtent);
     VkSwapchainPresentFenceInfoKHR getPresentFenceInfo();
@@ -66,4 +64,4 @@ private:
 
 } // namespace vkrt
 
-#endif // VKRT_VULKANSWAPCHAIN_HPP
+#endif // VKRT_SWAPCHAINMANAGER_HPP

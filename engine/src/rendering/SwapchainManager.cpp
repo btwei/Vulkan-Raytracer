@@ -1,26 +1,26 @@
-#include "VulkanSwapchain.hpp"
+#include "SwapchainManager.hpp"
 
 #include <algorithm>
+#include <vector>
 
-#include "Renderer.hpp"
 #include "VulkanInitializers.hpp"
 
 namespace vkrt {
 
-VulkanSwapchain::VulkanSwapchain(const DeviceContext& ctx, const VulkanSwapchainInfo& info)
+SwapchainManager::SwapchainManager(const VulkanContext& ctx, VkExtent2D windowExtent)
  : _device(ctx.device)
  , _physicalDevice(ctx.physicalDevice)
- , _surface(info.surface)
+ , _surface(ctx.surface)
  , _graphicsQueueFamilyIndex(ctx.graphicsQueueFamilyIndex)
  , _presentQueueFamilyIndex(ctx.presentQueueFamilyIndex) {
-    createSwapchain(info.extent);
+    createSwapchain(windowExtent);
 }
 
-VulkanSwapchain::~VulkanSwapchain() {
+SwapchainManager::~SwapchainManager() {
     destroySwapchain();
 }
 
-void VulkanSwapchain::resize(VkExtent2D windowExtent) {
+void SwapchainManager::resize(VkExtent2D windowExtent) {
     // Cleanup previous resources
     if(_pLatestPresentFence != nullptr) {
         // Using smooth swapchain resizing
@@ -35,7 +35,7 @@ void VulkanSwapchain::resize(VkExtent2D windowExtent) {
     createSwapchain(windowExtent, swapchain);
 }
 
-VkSwapchainPresentFenceInfoKHR VulkanSwapchain::getPresentFenceInfo() {
+VkSwapchainPresentFenceInfoKHR SwapchainManager::getPresentFenceInfo() {
     // To select a free fence, without blocking on any GPU-CPU sync operation,
     // we attempt to get a free fence from the presentFences vector. If none
     // are present we create a new fence and use that one.
@@ -71,7 +71,7 @@ VkSwapchainPresentFenceInfoKHR VulkanSwapchain::getPresentFenceInfo() {
     return presentFenceInfo;
 }
 
-void VulkanSwapchain::cleanupPerFrame() {
+void SwapchainManager::cleanupPerFrame() {
     // Attempt to cleanup each oldResource if the fence is signalled
     std::erase_if(_oldResources, [&](OldSwapchainSnapshot& oldResource) {
         if(vkGetFenceStatus(_device, oldResource.presentFence) == VK_SUCCESS) {
@@ -89,7 +89,7 @@ void VulkanSwapchain::cleanupPerFrame() {
     });
 }
 
-void VulkanSwapchain::setProperExtent(const VkSurfaceCapabilitiesKHR& surfaceCaps, VkExtent2D windowExtent) {
+void SwapchainManager::setProperExtent(const VkSurfaceCapabilitiesKHR& surfaceCaps, VkExtent2D windowExtent) {
     // Select the actual swapchain extent. 
     if(surfaceCaps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         extent = surfaceCaps.currentExtent;
@@ -99,7 +99,7 @@ void VulkanSwapchain::setProperExtent(const VkSurfaceCapabilitiesKHR& surfaceCap
     }
 }
 
-void VulkanSwapchain::setBestFormat() {
+void SwapchainManager::setBestFormat() {
     uint32_t surfaceFormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &surfaceFormatCount, nullptr);
     std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
@@ -116,7 +116,7 @@ void VulkanSwapchain::setBestFormat() {
     } 
 }
 
-void VulkanSwapchain::setBestPresentMode() {
+void SwapchainManager::setBestPresentMode() {
     presentMode = VK_PRESENT_MODE_FIFO_KHR; // Always available
     uint32_t presentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, nullptr);
@@ -130,7 +130,7 @@ void VulkanSwapchain::setBestPresentMode() {
     }
 }
 
-void VulkanSwapchain::createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR oldSwapchain /* = VK_NULL_HANDLE */) {
+void SwapchainManager::createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR oldSwapchain /* = VK_NULL_HANDLE */) {
     VkSurfaceCapabilitiesKHR surfaceCaps;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physicalDevice, _surface, &surfaceCaps);
 
@@ -197,7 +197,7 @@ void VulkanSwapchain::createSwapchain(VkExtent2D windowExtent, VkSwapchainKHR ol
     }
 }
 
-void VulkanSwapchain::destroySwapchain() {
+void SwapchainManager::destroySwapchain() {
     // Destroy all GPU resources owned by this VulkanSwapchain object
     for(int i = 0; i<imageViews.size(); i++) {
         vkDestroyImageView(_device, imageViews[i], nullptr);
@@ -211,7 +211,7 @@ void VulkanSwapchain::destroySwapchain() {
     }
 }
 
-void VulkanSwapchain::destroySwapchainDeferred() {
+void SwapchainManager::destroySwapchainDeferred() {
     // Remove a non nullptr present fence + associated resources
     _oldResources.push_back({
         *_pLatestPresentFence,
@@ -225,4 +225,4 @@ void VulkanSwapchain::destroySwapchainDeferred() {
     vkCreateFence(_device, &fenceInfo, nullptr, _pLatestPresentFence);
 }
 
-}
+} // namespace vkrt
