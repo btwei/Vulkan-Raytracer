@@ -380,7 +380,7 @@ BlasResources Renderer::createBLAS(GPUMeshBuffers meshBuffers, uint32_t vertexCo
     blasBuildGeometryInfo.geometryCount = 1;
     blasBuildGeometryInfo.pGeometries = &blasGeometry;
 
-    uint32_t maxPrimitiveCount = 1;
+    uint32_t maxPrimitiveCount = indexCount / 3;
     VkAccelerationStructureBuildSizesInfoKHR blasBuildSizes{ .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
     vkGetAccelerationStructureBuildSizesKHR(_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &blasBuildGeometryInfo, &maxPrimitiveCount, &blasBuildSizes);
 
