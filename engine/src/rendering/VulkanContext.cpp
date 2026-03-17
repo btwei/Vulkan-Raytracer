@@ -1,5 +1,7 @@
 #include "VulkanContext.hpp"
 
+#include "VulkanInitializers.hpp"
+
 namespace vkrt {
     
 VulkanContext::VulkanContext(Window* window) {
@@ -9,8 +11,13 @@ VulkanContext::VulkanContext(Window* window) {
 }
 
 VulkanContext::~VulkanContext() {
-    // Destroy objects in reverse order
-    // If a runtime error is thrown, these calls will still succeed
+    // Destroy owned objects in reverse order
+    // If a runtime error is thrown, these calls must still be valid
+    if(device != VK_NULL_HANDLE) {
+        vkDestroyCommandPool(device, immediateCommandPool, nullptr);
+        vkDestroyFence(device, immediateFence, nullptr);
+    }
+
     vkDestroyDevice(device, nullptr);
 
     if(instance != VK_NULL_HANDLE) {
@@ -20,6 +27,27 @@ VulkanContext::~VulkanContext() {
     }
 
     vkDestroyInstance(instance, nullptr);
+}
+
+void VulkanContext::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {
+    // Resets fence and buffer
+    VK_REQUIRE_SUCCESS(vkResetFences(device, 1, &immediateFence));
+    VK_REQUIRE_SUCCESS(vkResetCommandBuffer(immediateCommandBuffer, 0));
+
+    // Submits cmdBuf with given function
+    VkCommandBufferBeginInfo beginInfo = init::defaultCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_REQUIRE_SUCCESS(vkBeginCommandBuffer(immediateCommandBuffer, &beginInfo));
+
+    function(immediateCommandBuffer);
+
+    VK_REQUIRE_SUCCESS(vkEndCommandBuffer(immediateCommandBuffer));
+
+    std::vector<VkCommandBuffer> cmdBufs = {immediateCommandBuffer};
+    VkSubmitInfo submitInfo = init::defaultSubmitInfo(cmdBufs);
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, immediateFence);
+
+    // Waits until complete
+    VK_REQUIRE_SUCCESS(vkWaitForFences(device, 1, &immediateFence, true, 9'999'999'999));
 }
 
 vkb::Instance VulkanContext::createInstance() {
@@ -112,6 +140,20 @@ void VulkanContext::createDevice(vkb::Instance& vkbInstance) {
     graphicsQueueFamilyIndex = device_ret.value().get_queue_index(vkb::QueueType::graphics).value();
     presentQueue = device_ret.value().get_queue(vkb::QueueType::present).value();
     presentQueueFamilyIndex = device_ret.value().get_queue_index(vkb::QueueType::present).value();
+}
+
+void VulkanContext::createImmediateResources() {
+    // Initialize immediate command pool
+    VkCommandPoolCreateInfo poolInfo = init::defaultCommandPoolInfo(graphicsQueueFamilyIndex, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
+                                                                                              VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    if(vkCreateCommandPool(device, &poolInfo, nullptr, &immediateCommandPool) != VK_SUCCESS) throw std::runtime_error("Failed to create Vulkan command pool!");
+    
+    VkCommandBufferAllocateInfo allocInfo = init::defaultCommandBufferAllocateInfo(immediateCommandPool);
+    vkAllocateCommandBuffers(device, &allocInfo, &immediateCommandBuffer);
+
+    // Initialize immediate fence
+    VkFenceCreateInfo fenceInfo = init::defaultFenceInfo();
+    VK_REQUIRE_SUCCESS(vkCreateFence(device, &fenceInfo, nullptr, &immediateFence));
 }
 
 } // namespace vkrt

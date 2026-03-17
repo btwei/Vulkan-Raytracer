@@ -30,12 +30,24 @@ public:
     VkQueue presentQueue                    = VK_NULL_HANDLE;
     uint32_t presentQueueFamilyIndex        = 0;
 
+    VkCommandPool immediateCommandPool      = VK_NULL_HANDLE;
+    VkCommandBuffer immediateCommandBuffer  = VK_NULL_HANDLE;
+    VkFence immediateFence                  = VK_NULL_HANDLE;
+
+    /**
+     * @brief Submits a command buffer to the GPU.
+     * 
+     * Blocks until completed. Submits to a graphics queue.
+     */
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+
 private:
     Window* _window;
 
     vkb::Instance createInstance();
     void createSurface();
     void createDevice(vkb::Instance& vkbInstance);
+    void createImmediateResources();
 };
 
 } // namespace vkrt
