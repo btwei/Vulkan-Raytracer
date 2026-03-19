@@ -3,11 +3,11 @@
 
 #include <span>
 
-#include <vk_mem_alloc.h>
-
 #include "FrameManager.hpp"
 #include "VulkanContext.hpp"
 #include "VulkanTypes.hpp"
+
+#include <vk_mem_alloc.h>
 
 namespace vkrt {
 
