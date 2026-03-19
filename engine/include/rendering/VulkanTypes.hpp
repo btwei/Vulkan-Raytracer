@@ -36,17 +36,6 @@ struct AllocatedBuffer {
     VmaAllocationInfo info;
 };
 
-struct DeviceContext {
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice;
-    VkDevice device;
-
-    VkQueue graphicsQueue;
-    uint32_t graphicsQueueFamilyIndex;
-    VkQueue presentQueue;
-    uint32_t presentQueueFamilyIndex;
-};
-
 struct Vertex {
     glm::vec3 position;
     float texCoord0_u;
@@ -83,6 +72,12 @@ struct BlasInstance {
     VkDeviceAddress blasAddress;
     VkTransformMatrixKHR transform;
     uint32_t instanceIndex;
+};
+
+struct TlasResources {
+    AllocatedBuffer tlasBuffer;
+    VkAccelerationStructureKHR tlas;
+    VkDeviceAddress tlasAddress;
 };
 
 }
