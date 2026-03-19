@@ -1,6 +1,8 @@
 #ifndef VKRT_RESOURCEMANAGER_HPP
 #define VKRT_RESOURCEMANAGER_HPP
 
+#include <span>
+
 #include <vk_mem_alloc.h>
 
 #include "FrameManager.hpp"
@@ -28,27 +30,23 @@ public:
     GPUMeshBuffers uploadMeshBuffer(const std::span<Vertex>& vertices, const std::span<uint32_t>& indices);
     void destroyBuffer(AllocatedBuffer buffer);
     
-    /*
-    AllocatedImage createImage();
-    AllocatedImage uploadImage();
-    void destroyImage();
+    AllocatedImage createImage(VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+    AllocatedImage uploadImage(void* data, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+    void destroyImage(AllocatedImage image);
 
-    AllocatedSampler createSampler();
-    void destroySampler();
+    // Todo: add sampler builder
+    void destroySampler(VkSampler sampler);
 
-    BlasResources buildBlas();
-    void destroyBlas();
-    void enqueueBlasDestruction();
+    struct SubmeshInfo {
+        uint32_t triangleCount = 0;
+        uint32_t triangleOffset = 0;
+    };
 
-    void updateBlas();
-    void compactBlas();
+    BlasResources buildBlas(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount, const std::vector<SubmeshInfo>& submeshRanges);
+    void destroyBlas(BlasResources blasResources);
 
-    TlasResources buildTlas();
-    void destroyTlas();
-
-    uint32_t uploadMeshResources();
-    void freeMeshResources();
-    */
+    TlasResources buildTlas(const std::vector<BlasInstance>& blasInstances);
+    void destroyTlas(TlasResources tlasResources);
 
 private:
     VulkanContext& _vulkanContext;
