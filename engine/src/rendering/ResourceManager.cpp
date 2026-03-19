@@ -45,7 +45,7 @@ AllocatedBuffer ResourceManager::createBuffer(VkDeviceSize size, VkBufferUsageFl
     return buf;
 }
 
-AllocatedBuffer ResourceManager::uploadBuffer(void* data, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags = 0, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) {
+AllocatedBuffer ResourceManager::uploadBuffer(void* data, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags flags /* = 0 */, VmaMemoryUsage memoryUsage /* = VMA_MEMORY_USAGE_AUTO */) {
     // Allocate a staging buffer
     AllocatedBuffer stagingBuffer = createBuffer(size, 
                                                  usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
