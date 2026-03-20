@@ -1,9 +1,10 @@
 #ifndef VKRT_VULKANCONTEXT_HPP
 #define VKRT_VULKANCONTEXT_HPP
 
+#include "VulkanTypes.hpp"
+
 #include <VkBootstrap.h>
 
-#include "VulkanTypes.hpp"
 #include "Window.hpp"
 
 namespace vkrt {
@@ -39,7 +40,7 @@ public:
      * 
      * Blocks until completed. Submits to a graphics queue.
      */
-    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
 private:
     Window* _window;

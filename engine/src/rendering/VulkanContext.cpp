@@ -3,7 +3,7 @@
 #include "VulkanInitializers.hpp"
 
 namespace vkrt {
-    
+
 VulkanContext::VulkanContext(Window* window) {
     vkb::Instance vkbInstance = createInstance();
     createSurface();
@@ -29,7 +29,7 @@ VulkanContext::~VulkanContext() {
     vkDestroyInstance(instance, nullptr);
 }
 
-void VulkanContext::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) {
+void VulkanContext::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const {
     // Resets fence and buffer
     VK_REQUIRE_SUCCESS(vkResetFences(device, 1, &immediateFence));
     VK_REQUIRE_SUCCESS(vkResetCommandBuffer(immediateCommandBuffer, 0));
