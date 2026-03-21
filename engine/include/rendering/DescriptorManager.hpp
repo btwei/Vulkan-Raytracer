@@ -51,8 +51,6 @@ public:
     Descriptor0 allocateLayout0();
     Descriptor1 allocateLayout1();
 
-    void destroyDescriptorSet();
-
     VkDescriptorSetLayout layout0;
     VkDescriptorSetLayout layout1;
 
