@@ -3,7 +3,6 @@
 
 #include <span>
 
-#include "FrameManager.hpp"
 #include "VulkanContext.hpp"
 #include "VulkanTypes.hpp"
 
