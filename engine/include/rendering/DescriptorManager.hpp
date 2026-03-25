@@ -17,25 +17,16 @@ struct DescriptorBinding {
 };
 
 /**
- * @brief Relatively infrequently updates go to set0 in principle for vkrt
+ * @note I don't foresee needing multiple descriptor sets at the moment
  */
 struct Descriptor0 {
     constexpr static DescriptorBinding bindings[] = {
-    };
-    const static int maxSets = 1;
-
-    VkDescriptorSet descriptorSet;
-};
-
-/**
- * @brief Per frame updates go to set1 in principle for vkrt
- */
-struct Descriptor1 {
-    constexpr static DescriptorBinding bindings[] = {
         {0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR}
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+        {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR},
+        {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR}
     };
-    const static int maxSets = 3;
+    const static int maxSets = 2;
 
     VkDescriptorSet descriptorSet;
 };
@@ -49,13 +40,9 @@ public:
     ~DescriptorManager();
 
     Descriptor0 allocateLayout0();
-    Descriptor1 allocateLayout1();
 
     VkDescriptorSetLayout layout0;
-    VkDescriptorSetLayout layout1;
-
     VkDescriptorPool pool0;
-    VkDescriptorPool pool1;
 
 private:
     VkDevice _device;
