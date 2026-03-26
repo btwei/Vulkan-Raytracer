@@ -57,7 +57,7 @@ void RTManager::initRaytracingPipeline(Window* window) {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pcRange;
 
-    std::array<VkDescriptorSetLayout, 2> setLayouts = { _descriptorManager.layout0, _descriptorManager.layout1 };
+    std::array<VkDescriptorSetLayout, 2> setLayouts = { _descriptorManager.layout0 };
 
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
     pipelineLayoutInfo.pSetLayouts = setLayouts.data();

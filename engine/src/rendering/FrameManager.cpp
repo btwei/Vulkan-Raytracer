@@ -86,7 +86,7 @@ void FrameManager::initDrawImages(VkExtent2D swapchainExtent) {
 
 void FrameManager::initDescriptorSets() {
     for(FrameData& data : frameData) {
-        data.descriptorSet1 = _descriptorManager.allocateLayout1();
+        data.descriptorSet0 = _descriptorManager.allocateLayout0();
     }
 }
 

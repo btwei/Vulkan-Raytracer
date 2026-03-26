@@ -19,7 +19,7 @@ struct FrameData {
     VkFence renderFence;
     VkSemaphore acquireToRenderSemaphore;
 
-    Descriptor1 descriptorSet1;
+    Descriptor0 descriptorSet0;
 
     AllocatedImage drawImage;
     TlasResources tlasResources;
@@ -39,6 +39,7 @@ public:
     uint64_t frameCount = 0;
     FrameData frameData[NUM_FRAMES_IN_FLIGHT];
 
+    void beginFrame();
     void resizeDrawImages(VkExtent2D swapchainExtent);
     void cleanupPerFrame();
 
