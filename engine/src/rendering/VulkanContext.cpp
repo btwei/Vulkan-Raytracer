@@ -114,6 +114,9 @@ void VulkanContext::createDevice(vkb::Instance& vkbInstance) {
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
     rtPipelineFeatures.rayTracingPipeline = VK_TRUE;
 
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES };
+    indexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+
     vkb::PhysicalDeviceSelector deviceSelector{vkbInstance};
     auto phys_ret = deviceSelector.set_surface(surface)
                                   .set_required_features_12(features12)
@@ -122,6 +125,7 @@ void VulkanContext::createDevice(vkb::Instance& vkbInstance) {
                                   .add_required_extension_features(swapchainFeatures)
                                   .add_required_extension_features(accelerationFeatures)
                                   .add_required_extension_features(rtPipelineFeatures)
+                                  .add_required_extension_features(indexingFeatures)
                                   .set_minimum_version(1, 3)
                                   .select();
 

@@ -28,7 +28,8 @@ Descriptor0 DescriptorManager::allocateLayout0() {
 void DescriptorManager::initDescriptorLayouts() {
     // Create Descriptor Layout 0
     {
-        std::vector<VkDescriptorSetLayoutBinding> bindings{};
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        std::vector<VkDescriptorBindingFlags> bindingFlags;
         for(const DescriptorBinding& b : Descriptor0::bindings) {
             VkDescriptorSetLayoutBinding binding{};
             binding.binding = b.binding;
@@ -38,9 +39,15 @@ void DescriptorManager::initDescriptorLayouts() {
             binding.pImmutableSamplers = nullptr;
 
             bindings.push_back(binding);
+            bindingFlags.push_back(b.bindingFlags);
         }
 
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+        bindingFlagsInfo.bindingCount = bindingFlags.size();
+        bindingFlagsInfo.pBindingFlags = bindingFlags.data();
+
         VkDescriptorSetLayoutCreateInfo layout0Info{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+        layout0Info.pNext = &bindingFlagsInfo;
         layout0Info.bindingCount = bindings.size();
         layout0Info.pBindings = bindings.data();
 
@@ -53,7 +60,7 @@ void DescriptorManager::initDescriptorPools() {
     {
         std::vector<VkDescriptorPoolSize> sizes;
         for(const DescriptorBinding b : Descriptor0::bindings) {
-            sizes.push_back({ b.descriptorType, Descriptor0::maxSets});
+            sizes.push_back({ b.descriptorType, b.descriptorCount * Descriptor0::maxSets});
         }
 
         VkDescriptorPoolCreateInfo poolInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
