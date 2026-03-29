@@ -181,25 +181,28 @@ void Renderer::unloadMesh(UploadedMesh mesh) {
 
 UploadedTexture Renderer::uploadTexture(void* data, uint32_t width, uint32_t height, VkFormat format) {
     UploadedTexture uploadedTexture;
-    uploadedTexture.texture = _resourceManager->uploadImage(data, VkExtent3D(width, height, 1),
+    auto& textureArray = _resourceManager->textureArray; // I opt for auto here because the size of the array may change in the future
+
+    // Find the first available slot and assign it an Allocated Image
+    for(size_t i = 0; i < textureArray.size(); i++){
+        if(!textureArray[i].has_value()) {
+            uploadedTexture.textureIdx = i;
+            textureArray[i] = _resourceManager->uploadImage(data, VkExtent3D(width, height, 1),
                                                             format,
                                                             VK_IMAGE_USAGE_SAMPLED_BIT,
                                                             true);
-    uploadedTexture.textureIdx = _resourceManager->registerTexture(uploadedTexture.texture);
+            break;
+        }
+    }
 
     return uploadedTexture;
 }
 
 void Renderer::unloadTexture(UploadedTexture texture) {
     _frameManager->getPreviousFrame().deletionQueue.pushFunction([=, this](){
-        _resourceManager->destroyImage(texture.texture);
+        _resourceManager->destroyImage(_resourceManager->textureArray[texture.textureIdx].value());
+        _resourceManager->textureArray[texture.textureIdx].reset();
     });
-}
-
-void Renderer::setTLASBuild(std::vector<BlasInstance>&& instances) {
-    _tlasInstanceList = instances;
-    _tlasFramesToUpdate = NUM_FRAMES_IN_FLIGHT;
-    _tlasUseUpdateInsteadOfRebuild = false;
 }
 
 void Renderer::setViewMatrix(glm::mat4 viewMatrix) {

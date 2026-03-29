@@ -25,7 +25,6 @@ struct UploadedMesh {
 };
 
 struct UploadedTexture {
-    AllocatedImage texture;
     uint32_t textureIdx;
 };
 

@@ -9,6 +9,11 @@
 #include <vk_mem_alloc.h>
 
 namespace vkrt {
+    
+struct SubmeshInfo {
+    uint32_t triangleCount = 0;
+    uint32_t triangleOffset = 0;
+};
 
 /**
  * @class ResourceManager
@@ -36,16 +41,14 @@ public:
     // Todo: add sampler builder
     void destroySampler(VkSampler sampler);
 
-    struct SubmeshInfo {
-        uint32_t triangleCount = 0;
-        uint32_t triangleOffset = 0;
-    };
-
     BlasResources buildBlas(GPUMeshBuffers meshBuffers, uint32_t vertexCount, uint32_t indexCount, const std::vector<SubmeshInfo>& submeshRanges);
     void destroyBlas(BlasResources blasResources);
 
     TlasResources buildTlas(const std::vector<BlasInstance>& blasInstances);
     void destroyTlas(TlasResources tlasResources);
+
+    // Global resources (not per frame resources) also can go here
+    std::array<std::optional<AllocatedImage>, 50> textureArray;
 
 private:
     VulkanContext& _vulkanContext;
