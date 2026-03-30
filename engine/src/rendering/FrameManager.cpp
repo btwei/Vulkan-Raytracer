@@ -37,7 +37,10 @@ FrameManager::~FrameManager() {
 }
 
 void FrameManager::resizeDrawImages(VkExtent2D swapchainExtent) {
-
+    for(auto& data : frameData) {
+        data.resized = true;
+        data.resizeExtent = swapchainExtent;
+    }
 }
 
 void FrameManager::cleanupPerFrame() {
@@ -94,6 +97,27 @@ void FrameManager::initTlasResources() {
     for(FrameData& data : frameData) {
         std::vector<BlasInstance> emptyTlas;
         data.tlasResources = _resourceManager.buildTlas(emptyTlas);
+    }
+}
+
+void FrameManager::handleDrawImageResize() {
+    FrameData& frameData = getCurrentFrame();
+
+    if(frameData.resized) {
+        _resourceManager.destroyImage(frameData.drawImage);
+        frameData.drawImage = _resourceManager.createImage(VkExtent3D(frameData.resizeExtent.width, frameData.resizeExtent.height, 1),
+                                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                   VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+
+        _vulkanContext.immediateSubmit([&](VkCommandBuffer cmdBuf){
+            vkrt::utils::defaultImageTransition(cmdBuf, frameData.drawImage.image,
+                                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                                                0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                                                1);
+        });
+
+        getCurrentFrame().resized = false;
     }
 }
 

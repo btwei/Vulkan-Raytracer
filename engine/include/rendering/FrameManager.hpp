@@ -21,7 +21,12 @@ struct FrameData {
 
     Descriptor0 descriptorSet0;
 
+    // On window resize, all draw images should be resized,
+    // But you must wait until they are not in use
+    bool resized = false;
+    VkExtent2D resizeExtent;
     AllocatedImage drawImage;
+
     TlasResources tlasResources;
 
     DeletionQueue deletionQueue;
@@ -62,6 +67,7 @@ private:
     void initDescriptorSets();
     void initTlasResources();
 
+    void handleDrawImageResize();
 };
 
 } // namespace vkrt
