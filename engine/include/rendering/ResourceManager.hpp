@@ -15,6 +15,21 @@ struct SubmeshInfo {
     uint32_t triangleOffset = 0;
 };
 
+struct MaterialInstance {
+    uint32_t albedoTextureIdx;
+    uint32_t normalTextureIdx;
+    uint32_t metalRoughnessTextureIdx;
+    uint32_t aoTextureIdx;
+    uint32_t emissiveTextureIdx;
+
+    glm::vec4 albedoFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    glm::vec3 emissiveFactor;
+    float normalScale;
+    float occlusionStrength;
+};
+
 /**
  * @class ResourceManager
  * @brief Handles GPU resources in the Renderer class
@@ -48,7 +63,10 @@ public:
     void destroyTlas(TlasResources tlasResources);
 
     // Global resources (not per frame resources) also can go here
-    std::array<std::optional<AllocatedImage>, 50> textureArray;
+    std::array<std::optional<AllocatedImage>, 50> textureArray{};
+
+    AllocatedBuffer materialInstanceArray;
+    std::array<bool, 50> materialInstanceArrayOccupancy{}; // true if slot is occupied
 
 private:
     VulkanContext& _vulkanContext;
@@ -56,6 +74,8 @@ private:
     VkInstance _instance;
     VkPhysicalDevice _physicalDevice;
     VkDevice _device;
+
+    void initGlobalResources();
 
 };
 

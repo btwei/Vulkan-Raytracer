@@ -23,9 +23,18 @@ ResourceManager::ResourceManager(VulkanContext& ctx)
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
     VK_REQUIRE_SUCCESS(vmaCreateAllocator(&allocatorCreateInfo, &allocator));
+
+    initGlobalResources();
 }
 
 ResourceManager::~ResourceManager() {
+    // Cleanup global resources
+    destroyBuffer(materialInstanceArray);
+
+    for(std::optional<AllocatedImage>& slot : textureArray) {
+        if(slot.has_value()) destroyImage(slot.value());
+    }
+
     // Cleanup VMA
     vmaDestroyAllocator(allocator);
 }
@@ -365,6 +374,10 @@ TlasResources ResourceManager::buildTlas(const std::vector<BlasInstance>& blasIn
 void ResourceManager::destroyTlas(TlasResources tlasResources) {
     vkDestroyAccelerationStructureKHR(_device, tlasResources.tlas, nullptr);
     destroyBuffer(tlasResources.tlasBuffer);
+}
+
+void ResourceManager::initGlobalResources() {
+    materialInstanceArray = createBuffer(sizeof(MaterialInstance) * 50, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 }
 
 } // namespace vkrt
