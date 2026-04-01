@@ -68,7 +68,7 @@ public:
     UploadedTexture uploadTexture(void* data, uint32_t width, uint32_t height, VkFormat format);
     void unloadTexture(UploadedTexture texture);
 
-    uint32_t uploadMaterialInstance(MaterialParams params);
+    uint32_t uploadMaterialInstance(UploadedMesh mesh, MaterialParams params);
     void freeMaterialInstance(uint32_t material);
 
     void setScene(std::unique_ptr<std::vector<MeshInstance>> sceneInstances);

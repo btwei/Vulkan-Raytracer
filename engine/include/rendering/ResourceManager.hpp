@@ -15,7 +15,10 @@ struct SubmeshInfo {
     uint32_t triangleOffset = 0;
 };
 
-struct MaterialInstance {
+struct MeshMaterialInstance {
+    VkDeviceAddress vertexBufferAddress;
+    VkDeviceAddress indexBufferAddress;
+
     uint32_t albedoTextureIdx;
     uint32_t normalTextureIdx;
     uint32_t metalRoughnessTextureIdx;

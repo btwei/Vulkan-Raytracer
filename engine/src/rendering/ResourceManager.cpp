@@ -377,7 +377,7 @@ void ResourceManager::destroyTlas(TlasResources tlasResources) {
 }
 
 void ResourceManager::initGlobalResources() {
-    materialInstanceArray = createBuffer(sizeof(MaterialInstance) * 50, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    materialInstanceArray = createBuffer(sizeof(MeshMaterialInstance) * 50, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 }
 
 } // namespace vkrt
