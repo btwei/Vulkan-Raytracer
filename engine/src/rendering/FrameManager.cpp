@@ -36,6 +36,10 @@ FrameManager::~FrameManager() {
     }
 }
 
+void FrameManager::beginFrame() {
+    
+}
+
 void FrameManager::resizeDrawImages(VkExtent2D swapchainExtent) {
     for(auto& data : frameData) {
         data.resized = true;
@@ -45,6 +49,11 @@ void FrameManager::resizeDrawImages(VkExtent2D swapchainExtent) {
 
 void FrameManager::cleanupPerFrame() {
     
+}
+
+void FrameManager::endFrame() {
+    
+    frameCount++;
 }
 
 void FrameManager::initCommandResources() {

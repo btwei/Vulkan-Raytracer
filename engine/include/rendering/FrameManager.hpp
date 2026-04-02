@@ -47,6 +47,7 @@ public:
     void beginFrame();
     void resizeDrawImages(VkExtent2D swapchainExtent);
     void cleanupPerFrame();
+    void endFrame();
 
     uint64_t getFrameNumber() { return frameCount; }
 
