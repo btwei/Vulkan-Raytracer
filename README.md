@@ -1,0 +1,3 @@
+# Vulkan-Engine
+
+Vulkan custom rendering engine. Originally I wanted to use vulkan's raytracing extensions to make a full raytracing engine, however my dev machine is a mac, which doesn't support those extensions at the moment. I did get raytracing shaders working on my test machine, but iterating was slow. I am hopeful that KosmicKrisp will provide these extensions in the future, but for now I've decided to pivot to a rasterization engine and lean towards adding a compute based raytracing pipeline instead of one based on the extensions. 
