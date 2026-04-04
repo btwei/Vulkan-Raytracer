@@ -1,0 +1,9 @@
+[submodule "engine/third_party/SDL"]
+	path = engine/third_party/SDL
+	url = https://github.com/libsdl-org/SDL
+[submodule "engine/third_party/volk"]
+	path = engine/third_party/volk
+	url = https://github.com/zeux/volk
+[submodule "engine/third_party/VulkanMemoryAllocator"]
+	path = engine/third_party/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
